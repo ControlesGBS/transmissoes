@@ -33,13 +33,12 @@ body{font-family:system-ui,sans-serif;background:#f4f6f4;color:#1a2a1a;font-size
 .tabelas-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
 .secao{background:#fff;border:0.5px solid #c0dcc0;border-radius:8px;overflow:hidden}
 .secao-hdr{background:#1a4a1a;color:#c0e8c0;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
-.secao-hdr span{font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.3px}
-.secao-body{overflow-x:auto}
+.secao-hdr span{font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;flex:1;text-align:center}
+.secao-body{overflow-x:auto;max-height:500px;overflow-y:auto}
 table{width:100%;border-collapse:collapse;font-size:12px}
-thead th{background:#1a4a1a;color:#c0e8c0;font-weight:500;padding:6px 8px;text-align:center;white-space:nowrap;border-right:0.5px solid #2d6a2d}
+thead th{background:#1a4a1a;color:#c0e8c0;font-weight:500;padding:6px 8px;text-align:center;white-space:nowrap;border-right:0.5px solid #2d6a2d;position:sticky;top:0;z-index:1}
 tbody tr:nth-child(even){background:#f8fbf8}
 tbody td{padding:5px 8px;text-align:center;border-bottom:0.5px solid #e0eee0;border-right:0.5px solid #f0f8f0;color:#1a2a1a}
-td.left{text-align:left}
 .st-atrasado{color:#dc2626;font-weight:500;white-space:nowrap}
 .st-hoje{color:#d97706;font-weight:500}
 .st-pouco{color:#2563eb;font-weight:500}
@@ -90,12 +89,9 @@ td.left{text-align:left}
     </div>
   </div>
 
-  <div class="kpis" id="kpis">
-    <div class="kpi"><div class="kpi-label">ULs a Executar</div><div class="kpi-value">—</div></div>
-    <div class="kpi"><div class="kpi-label">Executadas</div><div class="kpi-value">—</div></div>
-    <div class="kpi"><div class="kpi-label">Pendentes</div><div class="kpi-value alerta">—</div></div>
-    <div class="kpi"><div class="kpi-label">% Executado</div><div class="kpi-value">—</div></div>
-    <div class="kpi"><div class="kpi-label">Releituras Pend.</div><div class="kpi-value alerta">—</div></div>
+  <div class="kpis" id="kpis" style="grid-template-columns:1fr 1fr;max-width:500px">
+    <div class="kpi"><div class="kpi-label">Leituras Pendentes</div><div class="kpi-value alerta" id="kpi-pend">—</div></div>
+    <div class="kpi"><div class="kpi-label">Releituras Pendentes</div><div class="kpi-value alerta" id="kpi-rele">—</div></div>
   </div>
 
   <!-- Tabelas lado a lado -->
@@ -363,7 +359,15 @@ async function carregarDados(){
     if(r.rota_tipo!=='LEITURA') return false;
     if(!estaNoMes(r.rota,mesNum)) return false;
     const pend=(r.a_executar||0)-(r.exec_100||0)-(r.exec_30||0)-(r.telemetria||0);
-    return pend>0;
+    if(pend<=0) return false;
+    // RZ futuro: só mostrar se já começou (exec > 0) ou se data já chegou/passou
+    const exec=(r.exec_100||0)+(r.exec_30||0)+(r.telemetria||0);
+    const dataLim=calendarioMap[r.rz]||null;
+    if(exec===0&&dataLim){
+      const dl=new Date(dataLim+'T12:00:00'); dl.setHours(0,0,0,0);
+      if(dl>hoje) return false; // futuro sem nenhuma leitura = não mostrar
+    }
+    return true;
   });
 
   const {data:rele}=await sb.from('releituras').select('*').eq('mes_ref',mesRef);
@@ -392,26 +396,21 @@ function aplicarFiltros(){
     if(rz&&r.rz!==rz) return false;
     return true;
   });
+  // Releituras: filtra só por base, RZ não afeta
   const filtR=dadosReleitura.filter(r=>{
-    if(rz&&r.rz!==rz) return false;
+    if(base&&r.base!==base) return false;
     return true;
   });
 
-  // KPIs
-  let totalAExec=0,totalExec=0,totalPend=0;
+  // KPIs - só pendentes e releituras
+  let totalPend=0;
   filtL.forEach(r=>{
-    totalAExec+=r.a_executar||0;
-    totalExec+=(r.exec_100||0)+(r.exec_30||0)+(r.telemetria||0);
     totalPend+=(r.a_executar||0)-(r.exec_100||0)-(r.exec_30||0)-(r.telemetria||0);
   });
-  const pct=totalAExec>0?Math.round(totalExec/totalAExec*100):0;
-
-  document.getElementById('kpis').innerHTML=`
-    <div class="kpi"><div class="kpi-label">ULs a Executar</div><div class="kpi-value">${totalAExec.toLocaleString('pt-BR')}</div></div>
-    <div class="kpi"><div class="kpi-label">Executadas</div><div class="kpi-value ok">${totalExec.toLocaleString('pt-BR')}</div></div>
-    <div class="kpi"><div class="kpi-label">Pendentes</div><div class="kpi-value ${totalPend>0?'alerta':'ok'}">${totalPend.toLocaleString('pt-BR')}</div></div>
-    <div class="kpi"><div class="kpi-label">% Executado</div><div class="kpi-value ${pct<100?'alerta':'ok'}">${pct}%</div></div>
-    <div class="kpi"><div class="kpi-label">Releituras Pend.</div><div class="kpi-value ${filtR.length>0?'alerta':'ok'}">${filtR.length}</div></div>`;
+  document.getElementById('kpi-pend').textContent=totalPend.toLocaleString('pt-BR');
+  document.getElementById('kpi-pend').className='kpi-value '+(totalPend>0?'alerta':'ok');
+  document.getElementById('kpi-rele').textContent=filtR.length.toLocaleString('pt-BR');
+  document.getElementById('kpi-rele').className='kpi-value '+(filtR.length>0?'alerta':'ok');
 
   paginaL=1; paginaR=1;
   renderTabelaLeitura(filtL);
@@ -428,7 +427,19 @@ function renderTabelaLeitura(dados){
         const pend=(r.a_executar||0)-(r.exec_100||0)-(r.exec_30||0)-(r.telemetria||0);
         const dataLim=calendarioMap[r.rz]||null;
         const dataStr=dataLim?new Date(dataLim+'T12:00:00').toLocaleDateString('pt-BR'):'—';
-        const st=statusLeitura(dataLim,hoje);
+        // Se data futura mas já começou = Em andamento
+        let st;
+        if(dataLim){
+          const dl=new Date(dataLim+'T12:00:00'); dl.setHours(0,0,0,0);
+          const exec=(r.exec_100||0)+(r.exec_30||0)+(r.telemetria||0);
+          if(dl>hoje&&exec>0){
+            st='<span class="st-ok">Em andamento</span>';
+          } else {
+            st=statusLeitura(dataLim,hoje);
+          }
+        } else {
+          st=statusLeitura(dataLim,hoje);
+        }
         return `<tr>
           <td class="left">${r.ul}</td>
           <td>${r.rz}</td>
