@@ -289,10 +289,12 @@ function estaNoMes(rota,mesNum){
 
 // Status transmissões: dias úteis (sáb conta, dom não)
 function diasUteisEntre(d1, d2){
+  // Conta dias úteis APÓS d1 até d2 (exclusive d1, inclusive d2)
   let count=0;
   const cur=new Date(d1);
+  cur.setDate(cur.getDate()+1); // começa no dia seguinte à data limite
   while(cur<=d2){
-    if(cur.getDay()!==0) count++; // domingo=0
+    if(cur.getDay()!==0) count++; // domingo=0 não conta
     cur.setDate(cur.getDate()+1);
   }
   return count;
@@ -300,13 +302,13 @@ function diasUteisEntre(d1, d2){
 
 function statusLeitura(dataLimite, hoje){
   if(!dataLimite) return '<span style="color:#6b7280;font-size:11px">Sem data</span>';
-  const dl=new Date(dataLimite); dl.setHours(0,0,0,0);
+  const dl=new Date(dataLimite+'T12:00:00'); dl.setHours(0,0,0,0);
   const hj=new Date(hoje); hj.setHours(0,0,0,0);
+  if(hj.getTime()===dl.getTime()) return '<span class="st-hoje">Dia da entrega</span>';
   if(hj>dl){
     const dias=diasUteisEntre(dl,hj);
     return `<span class="st-atrasado">Atrasado ${dias} dia${dias===1?' útil':'s úteis'}</span>`;
   }
-  if(hj.getTime()===dl.getTime()) return '<span class="st-hoje">Dia da entrega</span>';
   const diff=Math.round((dl-hj)/86400000);
   if(diff===1) return '<span class="st-pouco">Falta 1 dia</span>';
   return `<span class="st-ok">Faltam ${diff} dias</span>`;
