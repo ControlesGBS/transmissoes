@@ -511,22 +511,41 @@ async function processarCal(){
     const recs=[];
     for(const row of rows){
       if(!row[0]||!row[1]) continue;
-      const rz=String(row[0]).trim().padStart(2,'0');
-      if(!/^\d{2}$/.test(rz)) continue;
-      let data=String(row[1]).trim();
-      if(data.includes('/')){
-        const [d,m,a]=data.split('/');
-        data=`${a}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
-      } else if(!data.match(/^\d{4}-\d{2}-\d{2}$/)) continue;
+      const rzRaw=String(row[0]).trim();
+      if(!/^\d{1,2}$/.test(rzRaw)) continue; // pular cabeçalho
+      const rz=rzRaw.padStart(2,'0');
+      let data=null;
+      const v=row[1];
+      if(typeof v === 'string' && v.includes('/')){
+        const pts=v.trim().split('/');
+        if(pts.length===3){
+          // pode ser DD/MM/YYYY ou MM/DD/YYYY — pelo contexto é DD/MM/YYYY
+          const [d,m,a]=pts;
+          data=`${a.length===4?a:'20'+a}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+        }
+      } else if(typeof v === 'string' && v.match(/^\d{4}-\d{2}-\d{2}$/)){
+        data=v.trim();
+      } else if(v instanceof Date || (typeof v==='string' && !isNaN(Date.parse(v)))){
+        const dt=new Date(v);
+        data=dt.toISOString().slice(0,10);
+      }
+      if(!data) continue;
       const mes_ref=data.slice(0,7)+'-01';
       recs.push({mes_ref,rz,data_leitura:data});
     }
-    if(!recs.length){prog.textContent='Nenhum dado.';btn.disabled=false;return;}
-    const mesRef=recs[0].mes_ref;
-    await sb.from('calendario_leitura').delete().eq('mes_ref',mesRef);
-    for(let i=0;i<recs.length;i+=100) await sb.from('calendario_leitura').insert(recs.slice(i,i+100));
-    prog.className='progresso ok'; prog.textContent=`✓ ${recs.length} datas salvas!`;
-  }catch(e){prog.className='progresso erro';prog.textContent='Erro: '+e.message;btn.disabled=false;}
+    if(!recs.length){prog.textContent='Nenhum dado encontrado. Verifique o arquivo.';btn.disabled=false;return;}
+    // Agrupar por mes_ref e salvar cada mês
+    const porMes={};
+    recs.forEach(r=>{ if(!porMes[r.mes_ref]) porMes[r.mes_ref]=[]; porMes[r.mes_ref].push(r); });
+    let total=0;
+    for(const [mesRef,lote] of Object.entries(porMes)){
+      await sb.from('calendario_leitura').delete().eq('mes_ref',mesRef);
+      for(let i=0;i<lote.length;i+=100) await sb.from('calendario_leitura').insert(lote.slice(i,i+100));
+      total+=lote.length;
+    }
+    prog.className='progresso ok'; prog.textContent=`✓ ${total} datas salvas (${Object.keys(porMes).length} meses)!`;
+    carregarDados();
+  }catch(e){prog.className='progresso erro';prog.textContent='Erro: '+e.message;console.error(e);btn.disabled=false;}
 }
 
 async function processarAcomp(){
