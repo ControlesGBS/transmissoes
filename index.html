@@ -317,11 +317,11 @@ function statusLeitura(dataLimite, hoje){
 // Status releitura: dias corridos
 function statusReleitura(vencimento, hoje){
   if(!vencimento) return '<span style="color:#6b7280;font-size:11px">Sem data</span>';
-  const venc=new Date(vencimento); venc.setHours(0,0,0,0);
+  const venc=new Date(vencimento+'T12:00:00'); venc.setHours(0,0,0,0);
   const hj=new Date(hoje); hj.setHours(0,0,0,0);
   const diff=Math.round((venc-hj)/86400000);
-  if(diff<0) return `<span class="st-atrasado">Vencida ${Math.abs(diff)} dia${Math.abs(diff)===1?'':'s'}</span>`;
   if(diff===0) return '<span class="st-hoje">Dia da entrega</span>';
+  if(diff<0) return `<span class="st-atrasado">Vencida ${Math.abs(diff)} dia${Math.abs(diff)===1?'':'s'}</span>`;
   if(diff===1) return '<span class="st-pouco">Falta 1 dia</span>';
   return `<span class="st-ok">Faltam ${diff} dias</span>`;
 }
