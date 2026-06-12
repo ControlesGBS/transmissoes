@@ -90,7 +90,7 @@ tbody td{padding:5px 8px;text-align:center;border-bottom:0.5px solid #e0eee0;bor
   </div>
 
   <div class="kpis" id="kpis" style="grid-template-columns:1fr 1fr;max-width:500px">
-    <div class="kpi"><div class="kpi-label">Leituras Pendentes</div><div class="kpi-value alerta" id="kpi-pend">—</div></div>
+    <div class="kpi"><div class="kpi-label">ULs Atrasadas</div><div class="kpi-value alerta" id="kpi-pend">—</div></div>
     <div class="kpi"><div class="kpi-label">Releituras Pendentes</div><div class="kpi-value alerta" id="kpi-rele">—</div></div>
   </div>
 
@@ -402,13 +402,17 @@ function aplicarFiltros(){
     return true;
   });
 
-  // KPIs - só pendentes e releituras
-  let totalPend=0;
+  // KPIs - atrasadas (data limite < hoje) e releituras
+  const hoje2=new Date(); hoje2.setHours(0,0,0,0);
+  let totalAtrasadas=0;
   filtL.forEach(r=>{
-    totalPend+=(r.a_executar||0)-(r.exec_100||0)-(r.exec_30||0)-(r.telemetria||0);
+    const dataLim=calendarioMap[r.rz]||null;
+    if(!dataLim) return;
+    const dl=new Date(dataLim+'T12:00:00'); dl.setHours(0,0,0,0);
+    if(dl<hoje2) totalAtrasadas++;
   });
-  document.getElementById('kpi-pend').textContent=totalPend.toLocaleString('pt-BR');
-  document.getElementById('kpi-pend').className='kpi-value '+(totalPend>0?'alerta':'ok');
+  document.getElementById('kpi-pend').textContent=totalAtrasadas.toLocaleString('pt-BR');
+  document.getElementById('kpi-pend').className='kpi-value '+(totalAtrasadas>0?'alerta':'ok');
   document.getElementById('kpi-rele').textContent=filtR.length.toLocaleString('pt-BR');
   document.getElementById('kpi-rele').className='kpi-value '+(filtR.length>0?'alerta':'ok');
 
