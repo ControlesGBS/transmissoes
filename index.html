@@ -420,10 +420,9 @@ function aplicarFiltros(){
 function renderTabelaLeitura(dados){
   const hoje=new Date(); hoje.setHours(0,0,0,0);
   const total=dados.length;
-  const pag=dados.slice((paginaL-1)*POR_PAG, paginaL*POR_PAG);
 
-  document.getElementById('tbody-leitura').innerHTML=pag.length
-    ?pag.map(r=>{
+  document.getElementById('tbody-leitura').innerHTML=dados.length
+    ?dados.map(r=>{
         const pend=(r.a_executar||0)-(r.exec_100||0)-(r.exec_30||0)-(r.telemetria||0);
         const dataLim=calendarioMap[r.rz]||null;
         const dataStr=dataLim?new Date(dataLim+'T12:00:00').toLocaleDateString('pt-BR'):'—';
@@ -452,22 +451,12 @@ function renderTabelaLeitura(dados){
       }).join('')
     :'<tr><td colspan="7" style="padding:20px;color:#4a7a4a;text-align:center">Nenhuma pendência</td></tr>';
 
-  const totalPags=Math.ceil(total/POR_PAG);
-  document.getElementById('pag-leitura').innerHTML=`
-    <span>${total} ULs pendentes</span>
-    ${totalPags>1?`<div style="display:flex;gap:6px">
-      <button onclick="mudarPagL(-1)" ${paginaL===1?'disabled':''}>‹</button>
-      <span>${paginaL}/${totalPags}</span>
-      <button onclick="mudarPagL(1)" ${paginaL===totalPags?'disabled':''}>›</button>
-    </div>`:''}`;
+  document.getElementById('pag-leitura').innerHTML=`<span>${total} ULs pendentes</span>`;
 }
 
 function renderTabelaReleitura(dados){
   const hoje=new Date(); hoje.setHours(0,0,0,0);
-  const total=dados.length;
-  const pag=dados.slice((paginaR-1)*POR_PAG, paginaR*POR_PAG);
-
-  // Agrupar por UL+vencimento para mostrar quantidade
+  // Agrupar por UL+vencimento
   const agrup={};
   dados.forEach(r=>{
     const k=`${r.ul}|${r.vencimento||''}`;
@@ -475,10 +464,9 @@ function renderTabelaReleitura(dados){
     agrup[k].qtd++;
   });
   const agrupArr=Object.values(agrup).sort((a,b)=>a.ul.localeCompare(b.ul));
-  const pagAgrup=agrupArr.slice((paginaR-1)*POR_PAG, paginaR*POR_PAG);
 
-  document.getElementById('tbody-releitura').innerHTML=pagAgrup.length
-    ?pagAgrup.map(r=>{
+  document.getElementById('tbody-releitura').innerHTML=agrupArr.length
+    ?agrupArr.map(r=>{
         const vencStr=r.vencimento?new Date(r.vencimento+'T12:00:00').toLocaleDateString('pt-BR'):'—';
         const lc=r.ul?r.ul.slice(2,6):'';
         const base=r.base||(LOCAL_MAP[lc]?.base)||'—';
@@ -493,18 +481,10 @@ function renderTabelaReleitura(dados){
       }).join('')
     :'<tr><td colspan="5" style="padding:20px;color:#4a7a4a;text-align:center">Nenhuma releitura pendente</td></tr>';
 
-  const totalPags=Math.ceil(agrupArr.length/POR_PAG);
-  document.getElementById('pag-releitura').innerHTML=`
-    <span>${agrupArr.length} ULs com releitura</span>
-    ${totalPags>1?`<div style="display:flex;gap:6px">
-      <button onclick="mudarPagR(-1)" ${paginaR===1?'disabled':''}>‹</button>
-      <span>${paginaR}/${totalPags}</span>
-      <button onclick="mudarPagR(1)" ${paginaR===totalPags?'disabled':''}>›</button>
-    </div>`:''}`;
+  document.getElementById('pag-releitura').innerHTML=`<span>${agrupArr.length} ULs com releitura</span>`;
 }
 
-function mudarPagL(d){ paginaL+=d; aplicarFiltros(); }
-function mudarPagR(d){ paginaR+=d; aplicarFiltros(); }
+
 
 // ── ADMIN ──
 let fileCal=null,fileAcomp=null,fileRele=null;
