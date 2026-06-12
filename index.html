@@ -565,7 +565,7 @@ async function processarAcomp(){
         if(a_exec===0&&rele_total>0) rt='RELEITURA';
         else if(rotaNum>=1&&rotaNum<=88&&tipo==='CNV') rt='RELEITURA';
         const map=LOCAL_MAP[lc]||{};
-        recs.push({mes_ref:mesRef,ul,rz,local:lc,rota,tipo,a_executar:a_exec,
+        recs.push({mes_ref:mesRef,ul,rz,local_cod:lc,rota,tipo,a_executar:a_exec,
           exec_100,exec_30,telemetria:telem,total,n_executada:n_exec,auto_rural,
           rota_tipo:rt,base:map.base||null,cidade:map.cidade||null,
           data_arquivo:new Date().toISOString().slice(0,10)});
