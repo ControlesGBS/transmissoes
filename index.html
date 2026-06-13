@@ -378,8 +378,10 @@ async function carregarDados(){
   const rzs=[...new Set(dadosLeitura.map(r=>r.rz).filter(Boolean))].sort();
   const fBase=document.getElementById('f-base');
   const fRz=document.getElementById('f-rz');
-  const baseAtual=fBase.value, rzAtual=fRz.value;
-  fBase.innerHTML='<option value="">Todas</option>'+bases.map(b=>`<option value="${b}">${b}</option>`).join('');
+  const baseAtual=PERFIL_BASE||fBase.value, rzAtual=fRz.value;
+  if(!PERFIL_BASE){
+    fBase.innerHTML='<option value="">Todas</option>'+bases.map(b=>`<option value="${b}">${b}</option>`).join('');
+  }
   fRz.innerHTML='<option value="">Todos</option>'+rzs.map(r=>`<option value="${r}">${r}</option>`).join('');
   if(baseAtual) fBase.value=baseAtual;
   if(rzAtual) fRz.value=rzAtual;
@@ -388,7 +390,7 @@ async function carregarDados(){
 }
 
 function aplicarFiltros(){
-  const base=document.getElementById('f-base').value;
+  const base=PERFIL_BASE||document.getElementById('f-base').value;
   const rz=document.getElementById('f-rz').value;
 
   const filtL=dadosLeitura.filter(r=>{
@@ -661,10 +663,35 @@ async function processarRele(){
   }catch(e){prog.className='progresso erro';prog.textContent='Erro: '+e.message;console.error(e);btn.disabled=false;}
 }
 
+let PERFIL_BASE=null, PERFIL_TIPO=null;
+
 (async()=>{
   const {data:{user}}=await sb.auth.getUser();
   if(!user){location.href='../login.html';return;}
-  document.getElementById('hdr-user').textContent=user.email;
+
+  const {data:up}=await sb.from('usuarios_portal').select('nome,perfil,base,ativo').eq('id',user.id).single();
+  if(up&&up.ativo){
+    PERFIL_TIPO=up.perfil; PERFIL_BASE=up.base||null;
+    document.getElementById('hdr-user').textContent=up.nome||user.email;
+  } else {
+    document.getElementById('hdr-user').textContent=user.email;
+    PERFIL_TIPO='gestor'; PERFIL_BASE=null;
+  }
+
+  if(PERFIL_TIPO!=='gestor'){
+    document.querySelectorAll('.nav button').forEach(btn=>{
+      if(btn.textContent.trim()==='Administração') btn.style.display='none';
+    });
+  }
+
+  if(PERFIL_BASE){
+    const fBase=document.getElementById('f-base');
+    fBase.innerHTML=`<option value="${PERFIL_BASE}">${PERFIL_BASE}</option>`;
+    fBase.value=PERFIL_BASE;
+    fBase.disabled=true;
+    fBase.closest('div').style.display='none';
+  }
+
   await carregarMeses();
 })();
 </script>
