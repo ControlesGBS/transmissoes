@@ -127,7 +127,7 @@ tbody td{padding:5px 8px;text-align:center;border-bottom:0.5px solid #e0eee0;bor
         <div class="secao-body">
           <table>
             <thead><tr>
-              <th>UL</th><th>RZ</th><th>Vencimento</th><th>Base</th><th>Status</th>
+              <th>UL</th><th>RZ</th><th>N° Releitura</th><th>Vencimento</th><th>Base</th><th>Status</th>
             </tr></thead>
             <tbody id="tbody-releitura"></tbody>
           </table>
@@ -467,7 +467,7 @@ function renderTabelaReleitura(dados){
   const agrup={};
   dados.forEach(r=>{
     const k=`${r.ul}|${r.vencimento||''}`;
-    if(!agrup[k]) agrup[k]={ul:r.ul,rz:r.rz,vencimento:r.vencimento,base:r.base,qtd:0};
+    if(!agrup[k]) agrup[k]={ul:r.ul,rz:r.rz,vencimento:r.vencimento,base:r.base,qtd:0,n_releitura:r.n_releitura||1};
     agrup[k].qtd++;
   });
   const agrupArr=Object.values(agrup).sort((a,b)=>a.ul.localeCompare(b.ul));
@@ -481,12 +481,13 @@ function renderTabelaReleitura(dados){
         return `<tr>
           <td class="left">${r.ul}</td>
           <td>${r.rz}</td>
+          <td style="text-align:center;font-weight:500;color:#1a4a1a">${r.n_releitura}ª</td>
           <td>${vencStr}</td>
           <td>${base}</td>
           <td>${st}</td>
         </tr>`;
       }).join('')
-    :'<tr><td colspan="5" style="padding:20px;color:#4a7a4a;text-align:center">Nenhuma releitura pendente</td></tr>';
+    :'<tr><td colspan="6" style="padding:20px;color:#4a7a4a;text-align:center">Nenhuma releitura pendente</td></tr>';
 
   document.getElementById('pag-releitura').innerHTML=`<span>${agrupArr.length} ULs com releitura</span>`;
 }
