@@ -127,7 +127,7 @@ tbody td{padding:5px 8px;text-align:center;border-bottom:0.5px solid #e0eee0;bor
         <div class="secao-body">
           <table>
             <thead><tr>
-              <th>UL</th><th>RZ</th><th>N° Releitura</th><th>Vencimento</th><th>Base</th><th>Status</th>
+              <th>UL</th><th>RZ</th><th>Qtd. Instalações</th><th>Vencimento</th><th>Base</th><th>Status</th>
             </tr></thead>
             <tbody id="tbody-releitura"></tbody>
           </table>
@@ -481,7 +481,7 @@ function renderTabelaReleitura(dados){
         return `<tr>
           <td class="left">${r.ul}</td>
           <td>${r.rz}</td>
-          <td style="text-align:center;font-weight:500;color:#1a4a1a">${r.n_releitura}ª</td>
+          <td style="text-align:center;font-weight:500;color:#1a4a1a">${r.qtd}</td>
           <td>${vencStr}</td>
           <td>${base}</td>
           <td>${st}</td>
