@@ -107,13 +107,17 @@ tbody td{padding:5px 8px;text-align:center;border-bottom:0.5px solid #e0eee0;bor
         <div class="secao-body">
           <table>
             <thead><tr>
+              <th id="th-check-leit" style="display:none"><input type="checkbox" id="chk-all-leit" onchange="selecionarTodosLeit(this)" title="Selecionar todos"></th>
               <th>UL</th><th>RZ</th><th>A Exec.</th><th>Faltam</th>
-              <th>Data Leitura</th><th>Base</th><th>Status</th><th></th>
+              <th>Data Leitura</th><th>Base</th><th>Status</th>
             </tr></thead>
             <tbody id="tbody-leitura"></tbody>
           </table>
         </div>
-        <div class="pagination" id="pag-leitura"></div>
+        <div class="pagination" id="pag-leitura" style="display:flex;justify-content:space-between;align-items:center">
+          <span id="pag-leit-count"></span>
+          <button id="btn-disparar-leit" onclick="dispararSelecionadas('leit')" style="display:none;background:#1a4a1a;color:#c0e8c0;border:none;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:12px;gap:6px">✈️ Disparar selecionadas (<span id="sel-count-leit">0</span>)</button>
+        </div>
       </div>
     </div>
 
@@ -127,12 +131,16 @@ tbody td{padding:5px 8px;text-align:center;border-bottom:0.5px solid #e0eee0;bor
         <div class="secao-body">
           <table>
             <thead><tr>
-              <th>UL</th><th>RZ</th><th>Qtd. Instalações</th><th>Vencimento</th><th>Base</th><th>Status</th><th></th>
+              <th id="th-check-rele" style="display:none"><input type="checkbox" id="chk-all-rele" onchange="selecionarTodosRele(this)" title="Selecionar todos"></th>
+              <th>UL</th><th>RZ</th><th>Qtd. Instalações</th><th>Vencimento</th><th>Base</th><th>Status</th>
             </tr></thead>
             <tbody id="tbody-releitura"></tbody>
           </table>
         </div>
-        <div class="pagination" id="pag-releitura"></div>
+        <div class="pagination" id="pag-releitura" style="display:flex;justify-content:space-between;align-items:center">
+          <span id="pag-rele-count"></span>
+          <button id="btn-disparar-rele" onclick="dispararSelecionadas('rele')" style="display:none;background:#1a4a1a;color:#c0e8c0;border:none;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:12px">✈️ Disparar selecionadas (<span id="sel-count-rele">0</span>)</button>
+        </div>
       </div>
     </div>
   </div>
@@ -446,7 +454,13 @@ function renderTabelaLeitura(dados){
         } else {
           st=statusLeitura(dataLim,hoje);
         }
+        const podeSel=PODE_DISPARAR()&&(st.includes('Atrasado')||st.includes('Dia da entrega'));
+        const dataLimEsc=(dataLim||'').replace(/'/g,"\'");
+        const baseEsc=(r.base||'').replace(/'/g,"\'");
         return `<tr>
+          <td style="display:${PODE_DISPARAR()?'table-cell':'none'};text-align:center">
+            ${podeSel?`<input type="checkbox" class="chk-leit" data-ul="${r.ul}" data-base="${baseEsc}" data-datalim="${dataLimEsc}" onchange="atualizarContLeit()">`:''}
+          </td>
           <td class="left">${r.ul}</td>
           <td>${r.rz}</td>
           <td>${r.a_executar||0}</td>
@@ -454,14 +468,12 @@ function renderTabelaLeitura(dados){
           <td>${dataStr}</td>
           <td>${r.base||'—'}</td>
           <td>${st}</td>
-          <td>${PODE_DISPARAR()&&(st.includes('Atrasado')||st.includes('Dia da entrega'))?
-            `<button onclick="dispararEmail('transmissao','${r.ul}','${r.base||''}','${dataLim||''}')" title="Enviar tratativa" style="background:none;border:none;cursor:pointer;font-size:15px;padding:0">✈️</button>`
-            :''}</td>
         </tr>`;
       }).join('')
-    :'<tr><td colspan="7" style="padding:20px;color:#4a7a4a;text-align:center">Nenhuma pendência</td></tr>';
+    :'<tr><td colspan="8" style="padding:20px;color:#4a7a4a;text-align:center">Nenhuma pendência</td></tr>';
 
-  document.getElementById('pag-leitura').innerHTML=`<span>${total} ULs pendentes</span>`;
+  document.getElementById('pag-leit-count').textContent=`${total} ULs pendentes`;
+  if(PODE_DISPARAR()){ document.getElementById('th-check-leit').style.display=''; document.getElementById('btn-disparar-leit').style.display='none'; document.getElementById('sel-count-leit').textContent='0'; document.getElementById('chk-all-leit').checked=false; }
 }
 
 function renderTabelaReleitura(dados){
@@ -481,26 +493,141 @@ function renderTabelaReleitura(dados){
         const lc=r.ul?r.ul.slice(2,6):'';
         const base=r.base||(LOCAL_MAP[lc]?.base)||'—';
         const st=statusReleitura(r.vencimento,hoje);
+        const podeSel=PODE_DISPARAR()&&(st.includes('Vencida')||st.includes('Dia da entrega')||st.includes('Falta 1'));
+        const vencEsc=(r.vencimento||'').replace(/'/g,"\'");
+        const baseEsc=base.replace(/'/g,"\'");
         return `<tr>
+          <td style="display:${PODE_DISPARAR()?'table-cell':'none'};text-align:center">
+            ${podeSel?`<input type="checkbox" class="chk-rele" data-ul="${r.ul}" data-base="${baseEsc}" data-venc="${vencEsc}" onchange="atualizarContRele()">`:''}
+          </td>
           <td class="left">${r.ul}</td>
           <td>${r.rz}</td>
           <td style="text-align:center;font-weight:500;color:#1a4a1a">${r.qtd}</td>
           <td>${vencStr}</td>
           <td>${base}</td>
           <td>${st}</td>
-          <td>${PODE_DISPARAR()&&(st.includes('Vencida')||st.includes('Dia da entrega')||st.includes('Falta 1'))?
-            `<button onclick="dispararEmail('releitura','${r.ul}','${base}','${r.vencimento||''}')" title="Enviar tratativa" style="background:none;border:none;cursor:pointer;font-size:15px;padding:0">✈️</button>`
-            :''}</td>
         </tr>`;
       }).join('')
-    :'<tr><td colspan="6" style="padding:20px;color:#4a7a4a;text-align:center">Nenhuma releitura pendente</td></tr>';
+    :'<tr><td colspan="7" style="padding:20px;color:#4a7a4a;text-align:center">Nenhuma releitura pendente</td></tr>';
 
-  document.getElementById('pag-releitura').innerHTML=`<span>${agrupArr.length} ULs com releitura</span>`;
+  document.getElementById('pag-rele-count').textContent=`${agrupArr.length} ULs com releitura`;
+  if(PODE_DISPARAR()){ document.getElementById('th-check-rele').style.display=''; document.getElementById('btn-disparar-rele').style.display='none'; document.getElementById('sel-count-rele').textContent='0'; document.getElementById('chk-all-rele').checked=false; }
 }
 
 
 
 // ── DISPARO DE TRATATIVA ──
+function selecionarTodosLeit(chk){
+  document.querySelectorAll('.chk-leit').forEach(c=>c.checked=chk.checked);
+  atualizarContLeit();
+}
+function selecionarTodosRele(chk){
+  document.querySelectorAll('.chk-rele').forEach(c=>c.checked=chk.checked);
+  atualizarContRele();
+}
+function atualizarContLeit(){
+  const sel=document.querySelectorAll('.chk-leit:checked').length;
+  document.getElementById('sel-count-leit').textContent=sel;
+  document.getElementById('btn-disparar-leit').style.display=sel>0?'':'none';
+}
+function atualizarContRele(){
+  const sel=document.querySelectorAll('.chk-rele:checked').length;
+  document.getElementById('sel-count-rele').textContent=sel;
+  document.getElementById('btn-disparar-rele').style.display=sel>0?'':'none';
+}
+
+async function dispararSelecionadas(tabela){
+  const classe=tabela==='leit'?'chk-leit':'chk-rele';
+  const checks=[...document.querySelectorAll(`.${classe}:checked`)];
+  if(!checks.length) return;
+
+  const senha=prompt('Senha para disparar tratativas:');
+  if(senha!=='GBS@2026'){if(senha!==null)alert('Senha incorreta.');return;}
+
+  const diasStr=prompt(`Quantos dias de prazo para o tratamento? (${checks.length} UL(s) selecionada(s))`);
+  if(!diasStr||isNaN(parseInt(diasStr))){alert('Informe um número de dias válido.');return;}
+  const dias=parseInt(diasStr);
+  const prazoDate=new Date(); prazoDate.setDate(prazoDate.getDate()+dias);
+  const prazoISO=prazoDate.toISOString().slice(0,10);
+  const prazoFmt=prazoDate.toLocaleDateString('pt-BR');
+
+  // Agrupar por base
+  const porBase={};
+  checks.forEach(c=>{
+    const base=(c.dataset.base||'').toUpperCase();
+    if(!porBase[base]) porBase[base]=[];
+    porBase[base].push({ul:c.dataset.ul, dataRef:tabela==='leit'?c.dataset.datalim:c.dataset.venc});
+  });
+
+  let enviados=0, semSup=[];
+  for(const [base, uls] of Object.entries(porBase)){
+    const sup=SUPS_MAP[base];
+    if(!sup){semSup.push(base);continue;}
+
+    const tipo=tabela==='leit'?'transmissoes':'releituras';
+    const tipoLabel=tabela==='leit'?'Transmissões pendentes':'Releituras pendentes';
+
+    // Montar lista de ULs para o email
+    const linhasUL=uls.map(u=>{
+      const dataFmt=u.dataRef?new Date(u.dataRef+'T12:00:00').toLocaleDateString('pt-BR'):'—';
+      return `<tr><td style="padding:4px 8px;border:0.5px solid #c0dcc0">${u.ul}</td><td style="padding:4px 8px;border:0.5px solid #c0dcc0">${dataFmt}</td></tr>`;
+    }).join('');
+
+    const ocorrencia=`${uls.length} UL(s) com ${tipoLabel.toLowerCase()} na base ${base}.`;
+
+    const {data:trat}=await sb.from('tratativas').insert({
+      tipo, automatica:false,
+      supervisor_nome:sup.nome, supervisor_email:sup.email, base,
+      detalhe:ocorrencia, prazo_resposta:prazoISO,
+    }).select().single();
+
+    const link=`${location.origin}/controles/tratativas/responder.html?id=${trat?.id}`;
+    const corpo=`
+<div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;color:#1a2a1a">
+  <div style="background:#1a4a1a;padding:14px 20px;border-radius:8px 8px 0 0">
+    <span style="color:#c8e8c8;font-weight:500;font-size:15px">GBS Serviços — Gestão de Controles</span>
+  </div>
+  <div style="background:#fff;border:0.5px solid #c0dcc0;padding:20px;border-radius:0 0 8px 8px">
+    <p style="margin-bottom:14px">Olá, <strong>${sup.nome}</strong>!</p>
+    <p style="margin-bottom:14px">As seguintes ULs requerem sua atenção:</p>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px">
+      <thead><tr>
+        <th style="padding:5px 8px;background:#1a4a1a;color:#c0e8c0;text-align:left">UL</th>
+        <th style="padding:5px 8px;background:#1a4a1a;color:#c0e8c0;text-align:left">${tabela==='leit'?'Data Limite':'Vencimento'}</th>
+      </tr></thead>
+      <tbody>${linhasUL}</tbody>
+    </table>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:13px">
+      <tr><td style="padding:6px 10px;border:0.5px solid #c0dcc0;background:#f8fbf8;font-weight:500;width:35%">Base</td><td style="padding:6px 10px;border:0.5px solid #c0dcc0">${base}</td></tr>
+      <tr><td style="padding:6px 10px;border:0.5px solid #c0dcc0;background:#f8fbf8;font-weight:500">Tipo</td><td style="padding:6px 10px;border:0.5px solid #c0dcc0">${tipoLabel}</td></tr>
+    </table>
+    <p style="margin-bottom:16px">Por favor, registre a tratativa até <strong>${prazoFmt}</strong> clicando no botão abaixo.</p>
+    <div style="text-align:center;margin-bottom:20px">
+      <a href="${link}" style="background:#2d7a2d;color:#fff;padding:10px 28px;border-radius:6px;text-decoration:none;font-weight:500;font-size:13px">REGISTRAR TRATATIVA</a>
+    </div>
+    <p style="font-size:11px;color:#4a7a4a;border-top:0.5px solid #c0dcc0;padding-top:12px">At.te<br><strong>Gestão de Controles</strong></p>
+  </div>
+</div>`;
+
+    await fetch(`${SUPABASE_URL_T}/functions/v1/enviar-email`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${SUPABASE_KEY_T}`},
+      body:JSON.stringify({para:sup.email,assunto:'Gestão de Controles - Ação atribuída a você',corpo})
+    });
+    enviados++;
+  }
+
+  let msg=`✓ ${enviados} email(s) disparado(s)!`;
+  if(semSup.length) msg+=`
+
+Sem supervisor cadastrado: ${semSup.join(', ')}`;
+  alert(msg);
+
+  // Desmarcar tudo
+  document.querySelectorAll(`.${classe}`).forEach(c=>c.checked=false);
+  document.getElementById(`chk-all-${tabela}`).checked=false;
+  tabela==='leit'?atualizarContLeit():atualizarContRele();
+}
 const SUPABASE_URL_T='https://ndwivbhqglpnfyqwjbzu.supabase.co';
 const SUPABASE_KEY_T='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kd2l2YmhxZ2xwbmZ5cXdqYnp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTI4NTM4MDgsImV4cCI6MjAyODQyOTgwOH0.nhSPvGFBZqzFHOsR3JdTPpRBHcKmMOFJ5P-aVnBnJLw';
 
