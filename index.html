@@ -493,7 +493,7 @@ function renderTabelaReleitura(dados){
         const lc=r.ul?r.ul.slice(2,6):'';
         const base=r.base||(LOCAL_MAP[lc]?.base)||'—';
         const st=statusReleitura(r.vencimento,hoje);
-        const podeSel=PODE_DISPARAR()&&(st.includes('Atrasado')||st.includes('Vencida')||st.includes('st-hoje'));
+        const podeSel=PODE_DISPARAR()&&(st.includes('Atrasado')||st.includes('Vencida'));
         const vencEsc=(r.vencimento||'').replace(/'/g,"\'");
         const baseEsc=base.replace(/'/g,"\'");
         return `<tr>
