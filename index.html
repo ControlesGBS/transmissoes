@@ -431,16 +431,25 @@ function aplicarFiltros(){
   renderTabelaLeitura(filtL);
   renderTabelaReleitura(filtR);
   // Carregar marcações de tratativas em background sem bloquear
-  carregarTratativasBackground(filtL, filtR);
+  if(PODE_DISPARAR()) carregarTratativasBackground(filtL, filtR);
 }
 
 async function carregarTratativasBackground(filtL, filtR){
   try{
     const iniMes=`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}-01T00:00:00`;
-    const r1=await sb.from('tratativas').select('base').eq('tipo','transmissoes').gte('created_at',iniMes);
-    (r1.data||[]).forEach(t=>{ if(t.base) ULS_DISPARADAS_LEIT.add(t.base.toUpperCase()); });
-    const r2=await sb.from('tratativas').select('base').eq('tipo','releituras').gte('created_at',iniMes);
-    (r2.data||[]).forEach(t=>{ if(t.base) ULS_DISPARADAS_RELE.add(t.base.toUpperCase()); });
+    // Buscar detalhe para extrair ULs individuais
+    const r1=await sb.from('tratativas').select('detalhe').eq('tipo','transmissoes').gte('created_at',iniMes);
+    (r1.data||[]).forEach(t=>{
+      if(!t.detalhe) return;
+      const m=t.detalhe.match(/ULs: ([\d,]+)/);
+      if(m) m[1].split(',').forEach(ul=>ULS_DISPARADAS_LEIT.add(ul.trim()));
+    });
+    const r2=await sb.from('tratativas').select('detalhe').eq('tipo','releituras').gte('created_at',iniMes);
+    (r2.data||[]).forEach(t=>{
+      if(!t.detalhe) return;
+      const m=t.detalhe.match(/ULs: ([\d,]+)/);
+      if(m) m[1].split(',').forEach(ul=>ULS_DISPARADAS_RELE.add(ul.trim()));
+    });
     renderTabelaLeitura(filtL);
     renderTabelaReleitura(filtR);
   }catch(e){ console.warn('tratativas background:',e); }
@@ -473,7 +482,7 @@ function renderTabelaLeitura(dados){
         const baseEsc=(r.base||'').replace(/'/g,"\'");
         return `<tr>
           <td style="display:${PODE_DISPARAR()?'table-cell':'none'};text-align:center">
-            ${podeSel?(ULS_DISPARADAS_LEIT.has((r.base||'').toUpperCase())?
+            ${podeSel?(ULS_DISPARADAS_LEIT.has(r.ul)?
               `<span title="Tratativa já disparada" style="color:#2d7a2d;font-size:13px">✅</span>`:
               `<input type="checkbox" class="chk-leit" data-ul="${r.ul}" data-base="${baseEsc}" data-datalim="${dataLimEsc}" onchange="atualizarContLeit()">`):''}
           </td>
@@ -514,7 +523,7 @@ function renderTabelaReleitura(dados){
         const baseEsc=base.replace(/'/g,"\'");
         return `<tr>
           <td style="display:${PODE_DISPARAR()?'table-cell':'none'};text-align:center">
-            ${podeSel?(ULS_DISPARADAS_RELE.has((r.base||'').toUpperCase())?
+            ${podeSel?(ULS_DISPARADAS_RELE.has(r.ul)?
               `<span title="Tratativa já disparada" style="color:#2d7a2d;font-size:13px">✅</span>`:
               `<input type="checkbox" class="chk-rele" data-ul="${r.ul}" data-base="${baseEsc}" data-venc="${vencEsc}" onchange="atualizarContRele()">`):''}
           </td>
@@ -591,7 +600,8 @@ async function dispararSelecionadas(tabela){
       return `<tr><td style="padding:4px 8px;border:0.5px solid #c0dcc0">${u.ul}</td><td style="padding:4px 8px;border:0.5px solid #c0dcc0">${dataFmt}</td></tr>`;
     }).join('');
 
-    const ocorrencia=`${uls.length} UL(s) com ${tipoLabel.toLowerCase()} na base ${base}.`;
+    const ulIds=uls.map(u=>u.ul).join(',');
+    const ocorrencia=`${uls.length} UL(s) com ${tipoLabel.toLowerCase()} na base ${base}. ULs: ${ulIds}`;
 
     const {data:trat}=await sb.from('tratativas').insert({
       tipo, automatica:false,
