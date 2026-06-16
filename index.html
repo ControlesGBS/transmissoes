@@ -427,22 +427,26 @@ function aplicarFiltros(){
   document.getElementById('kpi-rele').textContent=filtR.length.toLocaleString('pt-BR');
   document.getElementById('kpi-rele').className='kpi-value '+(filtR.length>0?'alerta':'ok');
 
-  // Buscar bases com tratativa já disparada no mês
-  ULS_DISPARADAS_LEIT=new Set();
-  ULS_DISPARADAS_RELE=new Set();
-  try{
-    if(PODE_DISPARAR()){
-      const anoMes=`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
-      const r1=await sb.from('tratativas').select('base').eq('tipo','transmissoes').like('prazo_resposta',`${anoMes}%`);
-      (r1.data||[]).forEach(t=>{ if(t.base) ULS_DISPARADAS_LEIT.add(t.base.toUpperCase()); });
-      const r2=await sb.from('tratativas').select('base').eq('tipo','releituras').like('prazo_resposta',`${anoMes}%`);
-      (r2.data||[]).forEach(t=>{ if(t.base) ULS_DISPARADAS_RELE.add(t.base.toUpperCase()); });
-    }
-  }catch(e){ console.warn('tratativas check:',e); }
-
-  paginaL=1; paginaR=1;
+    paginaL=1; paginaR=1;
   renderTabelaLeitura(filtL);
   renderTabelaReleitura(filtR);
+  // Carregar marcações de tratativas em background sem bloquear
+  if(PODE_DISPARAR()) carregarTratativasBackground(filtL, filtR);
+}
+
+async function carregarTratativasBackground(filtL, filtR){
+  try{
+    const anoMes=`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+    const r1=await sb.from('tratativas').select('base').eq('tipo','transmissoes').like('prazo_resposta',`${anoMes}%`);
+    (r1.data||[]).forEach(t=>{ if(t.base) ULS_DISPARADAS_LEIT.add(t.base.toUpperCase()); });
+    const r2=await sb.from('tratativas').select('base').eq('tipo','releituras').like('prazo_resposta',`${anoMes}%`);
+    (r2.data||[]).forEach(t=>{ if(t.base) ULS_DISPARADAS_RELE.add(t.base.toUpperCase()); });
+    // Re-renderizar só se houver bases disparadas
+    if(ULS_DISPARADAS_LEIT.size||ULS_DISPARADAS_RELE.size){
+      renderTabelaLeitura(filtL);
+      renderTabelaReleitura(filtR);
+    }
+  }catch(e){ console.warn('tratativas background:',e); }
 }
 
 function renderTabelaLeitura(dados){
