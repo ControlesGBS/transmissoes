@@ -431,19 +431,24 @@ function aplicarFiltros(){
   renderTabelaLeitura(filtL);
   renderTabelaReleitura(filtR);
   // Carregar marcações de tratativas em background sem bloquear
-  if(PODE_DISPARAR()) carregarTratativasBackground(filtL, filtR);
+  carregarTratativasBackground(filtL, filtR);
 }
 
 async function carregarTratativasBackground(filtL, filtR){
   try{
     const hoje=new Date();
-    const iniMes=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-01T00:00:00`;
-    const r1=await sb.from('tratativas').select('base').eq('tipo','transmissoes').gte('created_at',iniMes);
+    const iniMes=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-01`;
+    const fimMes=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-31`;
+    const r1=await sb.from('tratativas').select('base').eq('tipo','transmissoes')
+      .gte('prazo_resposta',iniMes).lte('prazo_resposta',fimMes);
     (r1.data||[]).forEach(t=>{ if(t.base) ULS_DISPARADAS_LEIT.add(t.base.toUpperCase()); });
-    const r2=await sb.from('tratativas').select('base').eq('tipo','releituras').gte('created_at',iniMes);
+    const r2=await sb.from('tratativas').select('base').eq('tipo','releituras')
+      .gte('prazo_resposta',iniMes).lte('prazo_resposta',fimMes);
     (r2.data||[]).forEach(t=>{ if(t.base) ULS_DISPARADAS_RELE.add(t.base.toUpperCase()); });
-    renderTabelaLeitura(filtL);
-    renderTabelaReleitura(filtR);
+    if(ULS_DISPARADAS_LEIT.size||ULS_DISPARADAS_RELE.size){
+      renderTabelaLeitura(filtL);
+      renderTabelaReleitura(filtR);
+    }
   }catch(e){ console.warn('tratativas background:',e); }
 }
 
