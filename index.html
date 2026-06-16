@@ -334,7 +334,11 @@ function statusReleitura(vencimento, hoje){
 
 async function carregarMeses(){
   const {data} = await sb.from('transmissoes').select('mes_ref').order('mes_ref',{ascending:false});
-  const meses=[...(new Set((data||[]).map(r=>r.mes_ref)))];
+  // Converter yyyy-mm-01 → MM/YYYY
+  const meses=[...(new Set((data||[]).map(r=>{
+    const [aa,mm]=r.mes_ref.split('-');
+    return `${mm}/${aa}`;
+  })))];
   const sel=document.getElementById('f-mes');
   const hoje=new Date();
   const mesAtual=`${String(hoje.getMonth()+1).padStart(2,'0')}/${hoje.getFullYear()}`;
