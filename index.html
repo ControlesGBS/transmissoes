@@ -427,6 +427,28 @@ function aplicarFiltros(){
   document.getElementById('kpi-rele').textContent=filtR.length.toLocaleString('pt-BR');
   document.getElementById('kpi-rele').className='kpi-value '+(filtR.length>0?'alerta':'ok');
 
+  // Buscar ULs que já tiveram tratativa disparada no mês
+  ULS_DISPARADAS_LEIT=new Set();
+  ULS_DISPARADAS_RELE=new Set();
+  if(PODE_DISPARAR()){
+    const mesAtual=new Date();
+    const iniMes=new Date(mesAtual.getFullYear(),mesAtual.getMonth(),1).toISOString().slice(0,10);
+    const {data:tratsLeit}=await sb.from('tratativas')
+      .select('detalhe').eq('tipo','transmissoes')
+      .gte('created_at',iniMes);
+    (tratsLeit||[]).forEach(t=>{
+      const m=t.detalhe?.match(/UL (\S+)/);
+      if(m) ULS_DISPARADAS_LEIT.add(m[1]);
+    });
+    const {data:tratsRele}=await sb.from('tratativas')
+      .select('detalhe').eq('tipo','releituras')
+      .gte('created_at',iniMes);
+    (tratsRele||[]).forEach(t=>{
+      const m=t.detalhe?.match(/UL (\S+)/);
+      if(m) ULS_DISPARADAS_RELE.add(m[1]);
+    });
+  }
+
   paginaL=1; paginaR=1;
   renderTabelaLeitura(filtL);
   renderTabelaReleitura(filtR);
@@ -459,7 +481,9 @@ function renderTabelaLeitura(dados){
         const baseEsc=(r.base||'').replace(/'/g,"\'");
         return `<tr>
           <td style="display:${PODE_DISPARAR()?'table-cell':'none'};text-align:center">
-            ${podeSel?`<input type="checkbox" class="chk-leit" data-ul="${r.ul}" data-base="${baseEsc}" data-datalim="${dataLimEsc}" onchange="atualizarContLeit()">`:''}
+            ${podeSel?(ULS_DISPARADAS_LEIT.has(r.ul)?
+              `<span title="Tratativa já disparada" style="color:#2d7a2d;font-size:13px">✅</span>`:
+              `<input type="checkbox" class="chk-leit" data-ul="${r.ul}" data-base="${baseEsc}" data-datalim="${dataLimEsc}" onchange="atualizarContLeit()">`):''}
           </td>
           <td class="left">${r.ul}</td>
           <td>${r.rz}</td>
@@ -498,7 +522,9 @@ function renderTabelaReleitura(dados){
         const baseEsc=base.replace(/'/g,"\'");
         return `<tr>
           <td style="display:${PODE_DISPARAR()?'table-cell':'none'};text-align:center">
-            ${podeSel?`<input type="checkbox" class="chk-rele" data-ul="${r.ul}" data-base="${baseEsc}" data-venc="${vencEsc}" onchange="atualizarContRele()">`:''}
+            ${podeSel?(ULS_DISPARADAS_RELE.has(r.ul)?
+              `<span title="Tratativa já disparada" style="color:#2d7a2d;font-size:13px">✅</span>`:
+              `<input type="checkbox" class="chk-rele" data-ul="${r.ul}" data-base="${baseEsc}" data-venc="${vencEsc}" onchange="atualizarContRele()">`):''}
           </td>
           <td class="left">${r.ul}</td>
           <td>${r.rz}</td>
@@ -862,6 +888,8 @@ async function processarRele(){
 
 let PERFIL_BASE=null, PERFIL_TIPO=null;
 let SUPS_MAP={}; // base -> {nome, email}
+let ULS_DISPARADAS_LEIT=new Set(); // ULs que já tiveram tratativa de transmissão no mês
+let ULS_DISPARADAS_RELE=new Set(); // ULs que já tiveram tratativa de releitura no mês
 const PODE_DISPARAR = ()=>['gestor','gestor1','supervisor_geral'].includes(PERFIL_TIPO);
 
 (async()=>{
