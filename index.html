@@ -427,20 +427,18 @@ function aplicarFiltros(){
   document.getElementById('kpi-rele').textContent=filtR.length.toLocaleString('pt-BR');
   document.getElementById('kpi-rele').className='kpi-value '+(filtR.length>0?'alerta':'ok');
 
-  // Buscar bases que já tiveram tratativa disparada no mês
+  // Buscar bases com tratativa já disparada no mês
   ULS_DISPARADAS_LEIT=new Set();
   ULS_DISPARADAS_RELE=new Set();
-  if(PODE_DISPARAR()){
-    try{
+  try{
+    if(PODE_DISPARAR()){
       const anoMes=`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
-      const {data:tratsLeit}=await sb.from('tratativas')
-        .select('base').eq('tipo','transmissoes').like('prazo_resposta',`${anoMes}%`);
-      (tratsLeit||[]).forEach(t=>{ if(t.base) ULS_DISPARADAS_LEIT.add(t.base.toUpperCase()); });
-      const {data:tratsRele}=await sb.from('tratativas')
-        .select('base').eq('tipo','releituras').like('prazo_resposta',`${anoMes}%`);
-      (tratsRele||[]).forEach(t=>{ if(t.base) ULS_DISPARADAS_RELE.add(t.base.toUpperCase()); });
-    }catch(e){ console.warn('Erro ao buscar tratativas:',e); }
-  }
+      const r1=await sb.from('tratativas').select('base').eq('tipo','transmissoes').like('prazo_resposta',`${anoMes}%`);
+      (r1.data||[]).forEach(t=>{ if(t.base) ULS_DISPARADAS_LEIT.add(t.base.toUpperCase()); });
+      const r2=await sb.from('tratativas').select('base').eq('tipo','releituras').like('prazo_resposta',`${anoMes}%`);
+      (r2.data||[]).forEach(t=>{ if(t.base) ULS_DISPARADAS_RELE.add(t.base.toUpperCase()); });
+    }
+  }catch(e){ console.warn('tratativas check:',e); }
 
   paginaL=1; paginaR=1;
   renderTabelaLeitura(filtL);
@@ -474,8 +472,8 @@ function renderTabelaLeitura(dados){
         const baseEsc=(r.base||'').replace(/'/g,"\'");
         return `<tr>
           <td style="display:${PODE_DISPARAR()?'table-cell':'none'};text-align:center">
-            ${podeSel?(ULS_DISPARADAS_LEIT.has((r.base||'').toUpperCase())?
-              `<span title="Tratativa já disparada este mês" style="color:#2d7a2d;font-size:13px">✅</span>`:
+            ${podeSel?(ULS_DISPARADAS_LEIT.has(r.ul)?
+              `<span title="Tratativa já disparada" style="color:#2d7a2d;font-size:13px">✅</span>`:
               `<input type="checkbox" class="chk-leit" data-ul="${r.ul}" data-base="${baseEsc}" data-datalim="${dataLimEsc}" onchange="atualizarContLeit()">`):''}
           </td>
           <td class="left">${r.ul}</td>
@@ -515,8 +513,8 @@ function renderTabelaReleitura(dados){
         const baseEsc=base.replace(/'/g,"\'");
         return `<tr>
           <td style="display:${PODE_DISPARAR()?'table-cell':'none'};text-align:center">
-            ${podeSel?(ULS_DISPARADAS_RELE.has((r.base||'').toUpperCase())?
-              `<span title="Tratativa já disparada este mês" style="color:#2d7a2d;font-size:13px">✅</span>`:
+            ${podeSel?(ULS_DISPARADAS_RELE.has(r.ul)?
+              `<span title="Tratativa já disparada" style="color:#2d7a2d;font-size:13px">✅</span>`:
               `<input type="checkbox" class="chk-rele" data-ul="${r.ul}" data-base="${baseEsc}" data-venc="${vencEsc}" onchange="atualizarContRele()">`):''}
           </td>
           <td class="left">${r.ul}</td>
