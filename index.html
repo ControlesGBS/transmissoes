@@ -437,13 +437,10 @@ function aplicarFiltros(){
 async function carregarTratativasBackground(filtL, filtR){
   try{
     const hoje=new Date();
-    const iniMes=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-01`;
-    const fimMes=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-31`;
-    const r1=await sb.from('tratativas').select('base').eq('tipo','transmissoes')
-      .gte('prazo_resposta',iniMes).lte('prazo_resposta',fimMes);
+    const iniMes=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-01T00:00:00`;
+    const r1=await sb.from('tratativas').select('base').eq('tipo','transmissoes').gte('created_at',iniMes);
     (r1.data||[]).forEach(t=>{ if(t.base) ULS_DISPARADAS_LEIT.add(t.base.toUpperCase()); });
-    const r2=await sb.from('tratativas').select('base').eq('tipo','releituras')
-      .gte('prazo_resposta',iniMes).lte('prazo_resposta',fimMes);
+    const r2=await sb.from('tratativas').select('base').eq('tipo','releituras').gte('created_at',iniMes);
     (r2.data||[]).forEach(t=>{ if(t.base) ULS_DISPARADAS_RELE.add(t.base.toUpperCase()); });
     renderTabelaLeitura(filtL);
     renderTabelaReleitura(filtR);
