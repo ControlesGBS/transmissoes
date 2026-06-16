@@ -90,10 +90,10 @@ tbody td{padding:5px 8px;text-align:center;border-bottom:0.5px solid #e0eee0;bor
     </div>
   </div>
 
-  <div class="kpis" id="kpis" style="grid-template-columns:1fr 1fr;max-width:500px">
+  <div class="kpis" id="kpis" style="grid-template-columns:1fr 1fr 1fr;max-width:700px">
     <div class="kpi"><div class="kpi-label">ULs Atrasadas</div><div class="kpi-value alerta" id="kpi-pend">—</div></div>
+    <div class="kpi"><div class="kpi-label">Qtd. Leituras Atrasadas</div><div class="kpi-value alerta" id="kpi-leit-atras">—</div></div>
     <div class="kpi"><div class="kpi-label">Releituras Pendentes</div><div class="kpi-value alerta" id="kpi-rele">—</div></div>
-    <div class="kpi"><div class="kpi-label">Releituras Vencidas</div><div class="kpi-value alerta" id="kpi-rele-venc">—</div></div>
   </div>
 
   <!-- Tabelas lado a lado -->
@@ -416,25 +416,33 @@ function aplicarFiltros(){
 
   // KPIs - atrasadas (data limite < hoje) e releituras
   const hoje2=new Date(); hoje2.setHours(0,0,0,0);
-  let totalAtrasadas=0;
+  let totalAtrasadas=0, totalLeitAtras=0;
   filtL.forEach(r=>{
     const dataLim=calendarioMap[r.rz]||null;
     if(!dataLim) return;
     const dl=new Date(dataLim+'T12:00:00'); dl.setHours(0,0,0,0);
-    if(dl<hoje2) totalAtrasadas++;
+    if(dl<hoje2){
+      totalAtrasadas++;
+      const pend=(r.a_executar||0)-(r.exec_100||0)-(r.exec_30||0)-(r.telemetria||0);
+      totalLeitAtras+=Math.max(0,pend);
+    }
   });
   document.getElementById('kpi-pend').textContent=totalAtrasadas.toLocaleString('pt-BR');
   document.getElementById('kpi-pend').className='kpi-value '+(totalAtrasadas>0?'alerta':'ok');
+  document.getElementById('kpi-leit-atras').textContent=totalLeitAtras.toLocaleString('pt-BR');
+  document.getElementById('kpi-leit-atras').className='kpi-value '+(totalLeitAtras>0?'alerta':'ok');
   document.getElementById('kpi-rele').textContent=filtR.length.toLocaleString('pt-BR');
   document.getElementById('kpi-rele').className='kpi-value '+(filtR.length>0?'alerta':'ok');
-  // Releituras vencidas (vencimento < hoje)
+  // Releituras vencidas (vencimento < hoje) — mantido para uso interno
   const totalVenc=filtR.filter(r=>{
     if(!r.vencimento) return false;
     const v=new Date(r.vencimento+'T12:00:00'); v.setHours(0,0,0,0);
     return v<hoje2;
   }).length;
-  document.getElementById('kpi-rele-venc').textContent=totalVenc.toLocaleString('pt-BR');
-  document.getElementById('kpi-rele-venc').className='kpi-value '+(totalVenc>0?'alerta':'ok');
+  if(document.getElementById('kpi-rele-venc')){
+    document.getElementById('kpi-rele-venc').textContent=totalVenc.toLocaleString('pt-BR');
+    document.getElementById('kpi-rele-venc').className='kpi-value '+(totalVenc>0?'alerta':'ok');
+  }
 
     paginaL=1; paginaR=1;
   renderTabelaLeitura(filtL);
