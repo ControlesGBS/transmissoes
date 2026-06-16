@@ -99,9 +99,10 @@ tbody td{padding:5px 8px;text-align:center;border-bottom:0.5px solid #e0eee0;bor
   <div class="tabelas-row">
     <!-- Leituras Pendentes -->
     <div class="secao">
-      <div class="secao-hdr" onclick="toggleSecao('sec-leitura')">
-        <span>&#9776; Leituras Pendentes</span>
-        <span id="sec-leitura-icon">&#9650;</span>
+      <div class="secao-hdr" style="cursor:default">
+        <button id="btn-disparar-leit" onclick="dispararSelecionadas('leit')" style="display:none;background:#2d7a2d;color:#fff;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px;white-space:nowrap">✈️ Disparar (<span id="sel-count-leit">0</span>)</button>
+        <span style="cursor:pointer;flex:1;text-align:center" onclick="toggleSecao('sec-leitura')">&#9776; LEITURAS PENDENTES</span>
+        <span id="sec-leitura-icon" style="cursor:pointer" onclick="toggleSecao('sec-leitura')">&#9650;</span>
       </div>
       <div id="sec-leitura">
         <div class="secao-body">
@@ -114,18 +115,18 @@ tbody td{padding:5px 8px;text-align:center;border-bottom:0.5px solid #e0eee0;bor
             <tbody id="tbody-leitura"></tbody>
           </table>
         </div>
-        <div class="pagination" id="pag-leitura" style="display:flex;justify-content:space-between;align-items:center">
+        <div class="pagination" id="pag-leitura">
           <span id="pag-leit-count"></span>
-          <button id="btn-disparar-leit" onclick="dispararSelecionadas('leit')" style="display:none;background:#1a4a1a;color:#c0e8c0;border:none;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:12px;gap:6px">✈️ Disparar selecionadas (<span id="sel-count-leit">0</span>)</button>
         </div>
       </div>
     </div>
 
     <!-- Releituras Pendentes -->
     <div class="secao">
-      <div class="secao-hdr" onclick="toggleSecao('sec-releitura')">
-        <span>&#9776; Releituras Pendentes</span>
-        <span id="sec-releitura-icon">&#9650;</span>
+      <div class="secao-hdr" style="cursor:default">
+        <button id="btn-disparar-rele" onclick="dispararSelecionadas('rele')" style="display:none;background:#2d7a2d;color:#fff;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px;white-space:nowrap">✈️ Disparar (<span id="sel-count-rele">0</span>)</button>
+        <span style="cursor:pointer;flex:1;text-align:center" onclick="toggleSecao('sec-releitura')">&#9776; RELEITURAS PENDENTES</span>
+        <span id="sec-releitura-icon" style="cursor:pointer" onclick="toggleSecao('sec-releitura')">&#9650;</span>
       </div>
       <div id="sec-releitura">
         <div class="secao-body">
@@ -137,9 +138,8 @@ tbody td{padding:5px 8px;text-align:center;border-bottom:0.5px solid #e0eee0;bor
             <tbody id="tbody-releitura"></tbody>
           </table>
         </div>
-        <div class="pagination" id="pag-releitura" style="display:flex;justify-content:space-between;align-items:center">
+        <div class="pagination" id="pag-releitura">
           <span id="pag-rele-count"></span>
-          <button id="btn-disparar-rele" onclick="dispararSelecionadas('rele')" style="display:none;background:#1a4a1a;color:#c0e8c0;border:none;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:12px">✈️ Disparar selecionadas (<span id="sel-count-rele">0</span>)</button>
         </div>
       </div>
     </div>
@@ -454,7 +454,7 @@ function renderTabelaLeitura(dados){
         } else {
           st=statusLeitura(dataLim,hoje);
         }
-        const podeSel=PODE_DISPARAR()&&(st.includes('Atrasado')||st.includes('Dia da entrega'));
+        const podeSel=PODE_DISPARAR()&&(st.includes('Atrasado')||st.includes('st-hoje'));
         const dataLimEsc=(dataLim||'').replace(/'/g,"\'");
         const baseEsc=(r.base||'').replace(/'/g,"\'");
         return `<tr>
@@ -473,7 +473,7 @@ function renderTabelaLeitura(dados){
     :'<tr><td colspan="8" style="padding:20px;color:#4a7a4a;text-align:center">Nenhuma pendência</td></tr>';
 
   document.getElementById('pag-leit-count').textContent=`${total} ULs pendentes`;
-  if(PODE_DISPARAR()){ document.getElementById('th-check-leit').style.display=''; document.getElementById('btn-disparar-leit').style.display='none'; document.getElementById('sel-count-leit').textContent='0'; document.getElementById('chk-all-leit').checked=false; }
+  if(PODE_DISPARAR()){ document.getElementById('th-check-leit').style.display=''; document.getElementById('btn-disparar-leit').style.display='none'; document.getElementById('sel-count-leit').textContent='0'; if(document.getElementById('chk-all-leit')) document.getElementById('chk-all-leit').checked=false; }
 }
 
 function renderTabelaReleitura(dados){
@@ -493,7 +493,7 @@ function renderTabelaReleitura(dados){
         const lc=r.ul?r.ul.slice(2,6):'';
         const base=r.base||(LOCAL_MAP[lc]?.base)||'—';
         const st=statusReleitura(r.vencimento,hoje);
-        const podeSel=PODE_DISPARAR()&&(st.includes('Vencida')||st.includes('Dia da entrega')||st.includes('Falta 1'));
+        const podeSel=PODE_DISPARAR()&&(st.includes('Atrasado')||st.includes('Vencida')||st.includes('st-hoje'));
         const vencEsc=(r.vencimento||'').replace(/'/g,"\'");
         const baseEsc=base.replace(/'/g,"\'");
         return `<tr>
@@ -511,7 +511,7 @@ function renderTabelaReleitura(dados){
     :'<tr><td colspan="7" style="padding:20px;color:#4a7a4a;text-align:center">Nenhuma releitura pendente</td></tr>';
 
   document.getElementById('pag-rele-count').textContent=`${agrupArr.length} ULs com releitura`;
-  if(PODE_DISPARAR()){ document.getElementById('th-check-rele').style.display=''; document.getElementById('btn-disparar-rele').style.display='none'; document.getElementById('sel-count-rele').textContent='0'; document.getElementById('chk-all-rele').checked=false; }
+  if(PODE_DISPARAR()){ document.getElementById('th-check-rele').style.display=''; document.getElementById('btn-disparar-rele').style.display='none'; document.getElementById('sel-count-rele').textContent='0'; if(document.getElementById('chk-all-rele')) document.getElementById('chk-all-rele').checked=false; }
 }
 
 
