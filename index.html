@@ -628,8 +628,8 @@ Sem supervisor cadastrado: ${semSup.join(', ')}`;
   document.getElementById(`chk-all-${tabela}`).checked=false;
   tabela==='leit'?atualizarContLeit():atualizarContRele();
 }
-const SUPABASE_URL_T='https://ndwivbhqglpnfyqwjbzu.supabase.co';
-const SUPABASE_KEY_T='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kd2l2YmhxZ2xwbmZ5cXdqYnp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTI4NTM4MDgsImV4cCI6MjAyODQyOTgwOH0.nhSPvGFBZqzFHOsR3JdTPpRBHcKmMOFJ5P-aVnBnJLw';
+const SUPABASE_URL_T=SUPABASE_URL;
+const SUPABASE_KEY_T=SUPABASE_KEY;
 
 async function dispararEmail(tipo, ul, base, dataRef){
   const senha=prompt('Senha para disparar tratativa:');
