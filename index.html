@@ -436,12 +436,15 @@ function aplicarFiltros(){
 
 async function carregarTratativasBackground(filtL, filtR){
   try{
-    const anoMes=`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
-    const r1=await sb.from('tratativas').select('base').eq('tipo','transmissoes').like('prazo_resposta',`${anoMes}%`);
+    const hoje=new Date();
+    const iniMes=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-01`;
+    const fimMes=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-31`;
+    const r1=await sb.from('tratativas').select('base').eq('tipo','transmissoes')
+      .gte('prazo_resposta',iniMes).lte('prazo_resposta',fimMes);
     (r1.data||[]).forEach(t=>{ if(t.base) ULS_DISPARADAS_LEIT.add(t.base.toUpperCase()); });
-    const r2=await sb.from('tratativas').select('base').eq('tipo','releituras').like('prazo_resposta',`${anoMes}%`);
+    const r2=await sb.from('tratativas').select('base').eq('tipo','releituras')
+      .gte('prazo_resposta',iniMes).lte('prazo_resposta',fimMes);
     (r2.data||[]).forEach(t=>{ if(t.base) ULS_DISPARADAS_RELE.add(t.base.toUpperCase()); });
-    // Re-renderizar só se houver bases disparadas
     if(ULS_DISPARADAS_LEIT.size||ULS_DISPARADAS_RELE.size){
       renderTabelaLeitura(filtL);
       renderTabelaReleitura(filtR);
