@@ -624,10 +624,14 @@ async function dispararSelecionadas(tabela){
     const ulIds=uls.map(u=>u.ul).join(',');
     const ocorrencia=`${uls.length} UL(s) com ${tipoLabel.toLowerCase()} na base ${base}. ULs: ${ulIds}`;
 
+    const mesSel=document.getElementById('f-mes').value;
+    const [mmSel,aaSel]=mesSel.split('/');
+    const mesRefTrat=`${aaSel}-${mmSel}-01`;
+
     const {data:trat}=await sb.from('tratativas').insert({
       tipo, automatica:false,
       supervisor_nome:sup.nome, supervisor_email:sup.email, base,
-      detalhe:ocorrencia, prazo_resposta:prazoISO,
+      detalhe:ocorrencia, prazo_resposta:prazoISO, mes_ref:mesRefTrat,
     }).select().single();
 
     const link=`${location.origin}/controles/tratativas/responder.html?id=${trat?.id}`;
@@ -700,11 +704,15 @@ async function dispararEmail(tipo, ul, base, dataRef){
     ?`UL ${ul} com leitura pendente de transmissão na base ${base} (data limite: ${dataRef?new Date(dataRef+'T12:00:00').toLocaleDateString('pt-BR'):'—'}).`
     :`UL ${ul} com releitura pendente na base ${base} (vencimento: ${dataRef?new Date(dataRef+'T12:00:00').toLocaleDateString('pt-BR'):'—'}).`;
 
+  const mesSelInd=document.getElementById('f-mes').value;
+  const [mmInd,aaInd]=mesSelInd.split('/');
+  const mesRefInd=`${aaInd}-${mmInd}-01`;
+
   const {data:trat,error}=await sb.from('tratativas').insert({
     tipo: tipo==='transmissao'?'transmissoes':'releituras',
     automatica:false,
     supervisor_nome:sup.nome, supervisor_email:sup.email, base,
-    detalhe:ocorrencia, prazo_resposta:prazoISO,
+    detalhe:ocorrencia, prazo_resposta:prazoISO, mes_ref:mesRefInd,
   }).select().single();
   if(error){alert('Erro ao registrar tratativa: '+error.message);return;}
 
