@@ -408,13 +408,13 @@ function aplicarFiltros(){
   const rz=document.getElementById('f-rz').value;
 
   const filtL=dadosLeitura.filter(r=>{
-    if(base&&r.base!==base) return false;
+    if(base&&(r.base||'').toLowerCase()!==base.toLowerCase()) return false;
     if(rz&&r.rz!==rz) return false;
     return true;
   });
   // Releituras: filtra só por base, RZ não afeta
   const filtR=dadosReleitura.filter(r=>{
-    if(base&&r.base!==base) return false;
+    if(base&&(r.base||'').toLowerCase()!==base.toLowerCase()) return false;
     return true;
   });
 
