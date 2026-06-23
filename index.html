@@ -88,6 +88,14 @@ tbody td{padding:5px 8px;text-align:center;border-bottom:0.5px solid #e0eee0;bor
     <div><label>RZ</label>
       <select id="f-rz" onchange="aplicarFiltros()"><option value="">Todos</option></select>
     </div>
+    <div id="multa-config" style="display:none">
+      <label>Multa Leitura (R$/UL, ≥2 dias atraso)</label>
+      <input type="number" id="f-multa-leit" step="0.01" min="0" placeholder="0,00" style="border:0.5px solid #a0c8a0;border-radius:5px;padding:4px 8px;font-size:13px;background:#f8fbf8;color:#1a2a1a;height:30px;width:140px" onchange="salvarConfigMultas()">
+    </div>
+    <div id="multa-config2" style="display:none">
+      <label>Multa Releitura (R$/UL, vencida)</label>
+      <input type="number" id="f-multa-rele" step="0.01" min="0" placeholder="0,00" style="border:0.5px solid #a0c8a0;border-radius:5px;padding:4px 8px;font-size:13px;background:#f8fbf8;color:#1a2a1a;height:30px;width:140px" onchange="salvarConfigMultas()">
+    </div>
   </div>
 
   <div class="kpis" id="kpis" style="grid-template-columns:1fr 1fr 1fr;max-width:700px">
@@ -111,7 +119,7 @@ tbody td{padding:5px 8px;text-align:center;border-bottom:0.5px solid #e0eee0;bor
             <thead><tr>
               <th id="th-check-leit" style="display:none"><input type="checkbox" id="chk-all-leit" onchange="selecionarTodosLeit(this)" title="Selecionar todos"></th>
               <th>UL</th><th>RZ</th><th>A Exec.</th><th>Faltam</th>
-              <th>Data Leitura</th><th>Base</th><th>Status</th>
+              <th>Data Leitura</th><th>Base</th><th>Status</th><th>Multa</th>
             </tr></thead>
             <tbody id="tbody-leitura"></tbody>
           </table>
@@ -134,7 +142,7 @@ tbody td{padding:5px 8px;text-align:center;border-bottom:0.5px solid #e0eee0;bor
           <table>
             <thead><tr>
               <th id="th-check-rele" style="display:none"><input type="checkbox" id="chk-all-rele" onchange="selecionarTodosRele(this)" title="Selecionar todos"></th>
-              <th>UL</th><th>RZ</th><th>Qtd. Instalações</th><th>Vencimento</th><th>Base</th><th>Status</th>
+              <th>UL</th><th>RZ</th><th>Qtd. Instalações</th><th>Vencimento</th><th>Base</th><th>Status</th><th>Multa</th>
             </tr></thead>
             <tbody id="tbody-releitura"></tbody>
           </table>
@@ -488,6 +496,7 @@ function renderTabelaLeitura(dados){
         const dataStr=dataLim?new Date(dataLim+'T12:00:00').toLocaleDateString('pt-BR'):'—';
         // Se data futura mas já começou = Em andamento
         let st;
+        let diasAtrasoLeit=0;
         if(dataLim){
           const dl=new Date(dataLim+'T12:00:00'); dl.setHours(0,0,0,0);
           const exec=(r.exec_100||0)+(r.exec_30||0)+(r.telemetria||0);
@@ -495,10 +504,13 @@ function renderTabelaLeitura(dados){
             st='<span class="st-ok">Em andamento</span>';
           } else {
             st=statusLeitura(dataLim,hoje);
+            if(hoje>dl) diasAtrasoLeit=diasUteisEntre(dl,hoje);
           }
         } else {
           st=statusLeitura(dataLim,hoje);
         }
+        const multaLeit=diasAtrasoLeit>=2?pend*valorMultaLeitura:0;
+        const multaLeitFmt=multaLeit>0?`<strong style="color:#a32d2d">R$ ${multaLeit.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>`:'—';
         const podeSel=PODE_DISPARAR()&&(st.includes('Atrasado')||st.includes('st-hoje'));
         const dataLimEsc=(dataLim||'').replace(/'/g,"\'");
         const baseEsc=(r.base||'').replace(/'/g,"\'");
@@ -515,9 +527,10 @@ function renderTabelaLeitura(dados){
           <td>${dataStr}</td>
           <td>${r.base||'—'}</td>
           <td>${st}</td>
+          <td>${multaLeitFmt}</td>
         </tr>`;
       }).join('')
-    :'<tr><td colspan="8" style="padding:20px;color:#4a7a4a;text-align:center">Nenhuma pendência</td></tr>';
+    :'<tr><td colspan="9" style="padding:20px;color:#4a7a4a;text-align:center">Nenhuma pendência</td></tr>';
 
   document.getElementById('pag-leit-count').textContent=`${total} ULs pendentes`;
   if(PODE_DISPARAR()){ document.getElementById('th-check-leit').style.display=''; document.getElementById('btn-disparar-leit').style.display='none'; document.getElementById('sel-count-leit').textContent='0'; if(document.getElementById('chk-all-leit')) document.getElementById('chk-all-leit').checked=false; }
@@ -540,6 +553,14 @@ function renderTabelaReleitura(dados){
         const lc=r.ul?r.ul.slice(2,6):'';
         const base=r.base||(LOCAL_MAP[lc]?.base)||'—';
         const st=statusReleitura(r.vencimento,hoje);
+        let diasVencidaRele=0;
+        if(r.vencimento){
+          const venc=new Date(r.vencimento+'T12:00:00'); venc.setHours(0,0,0,0);
+          const diff=Math.round((venc-hoje)/86400000);
+          if(diff<0) diasVencidaRele=Math.abs(diff);
+        }
+        const multaRele=diasVencidaRele>0?r.qtd*valorMultaReleitura:0;
+        const multaReleFmt=multaRele>0?`<strong style="color:#a32d2d">R$ ${multaRele.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>`:'—';
         const podeSel=PODE_DISPARAR()&&(st.includes('Atrasado')||st.includes('Vencida'));
         const vencEsc=(r.vencimento||'').replace(/'/g,"\'");
         const baseEsc=base.replace(/'/g,"\'");
@@ -555,9 +576,10 @@ function renderTabelaReleitura(dados){
           <td>${vencStr}</td>
           <td>${base}</td>
           <td>${st}</td>
+          <td>${multaReleFmt}</td>
         </tr>`;
       }).join('')
-    :'<tr><td colspan="7" style="padding:20px;color:#4a7a4a;text-align:center">Nenhuma releitura pendente</td></tr>';
+    :'<tr><td colspan="8" style="padding:20px;color:#4a7a4a;text-align:center">Nenhuma releitura pendente</td></tr>';
 
   document.getElementById('pag-rele-count').textContent=`${agrupArr.length} ULs com releitura`;
   if(PODE_DISPARAR()){ document.getElementById('th-check-rele').style.display=''; document.getElementById('btn-disparar-rele').style.display='none'; document.getElementById('sel-count-rele').textContent='0'; if(document.getElementById('chk-all-rele')) document.getElementById('chk-all-rele').checked=false; }
@@ -919,6 +941,26 @@ async function processarRele(){
 }
 
 let PERFIL_BASE=null, PERFIL_TIPO=null;
+let valorMultaLeitura=0, valorMultaReleitura=0;
+
+async function carregarConfigMultas(){
+  const {data}=await sb.from('transmissoes_multas_config').select('valor_leitura,valor_releitura').eq('id',1).maybeSingle();
+  valorMultaLeitura=data?.valor_leitura||0;
+  valorMultaReleitura=data?.valor_releitura||0;
+  if(PODE_DISPARAR()){
+    document.getElementById('multa-config').style.display='';
+    document.getElementById('multa-config2').style.display='';
+    document.getElementById('f-multa-leit').value=valorMultaLeitura;
+    document.getElementById('f-multa-rele').value=valorMultaReleitura;
+  }
+}
+
+async function salvarConfigMultas(){
+  valorMultaLeitura=parseFloat(document.getElementById('f-multa-leit').value)||0;
+  valorMultaReleitura=parseFloat(document.getElementById('f-multa-rele').value)||0;
+  await sb.from('transmissoes_multas_config').upsert({id:1,valor_leitura:valorMultaLeitura,valor_releitura:valorMultaReleitura,atualizado_em:new Date().toISOString()});
+  aplicarFiltros();
+}
 let SUPS_MAP={}; // base -> {nome, email}
 let ULS_DISPARADAS_LEIT=new Set(); // ULs que já tiveram tratativa de transmissão no mês
 let ULS_DISPARADAS_RELE=new Set(); // ULs que já tiveram tratativa de releitura no mês
@@ -957,6 +999,7 @@ const PODE_DISPARAR = ()=>['gestor','gestor1','supervisor_geral'].includes(PERFI
     (sups||[]).forEach(s=>{ if(s.base) SUPS_MAP[s.base.toUpperCase()]={nome:s.nome,email:s.email}; });
   }
 
+  await carregarConfigMultas();
   await carregarMeses();
 })();
 </script>
