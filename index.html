@@ -641,9 +641,6 @@ async function dispararSelecionadas(tabela){
   const checks=[...document.querySelectorAll(`.${classe}:checked`)];
   if(!checks.length) return;
 
-  const senha=prompt('Senha para disparar tratativas:');
-  if(senha!=='GBS@2026'){if(senha!==null)alert('Senha incorreta.');return;}
-
   const diasStr=prompt(`Quantos dias de prazo para o tratamento? (${checks.length} UL(s) selecionada(s))`);
   if(!diasStr||isNaN(parseInt(diasStr))){alert('Informe um número de dias válido.');return;}
   const dias=parseInt(diasStr);
@@ -737,9 +734,6 @@ const SUPABASE_URL_T=SUPABASE_URL;
 const SUPABASE_KEY_T=SUPABASE_KEY;
 
 async function dispararEmail(tipo, ul, base, dataRef){
-  const senha=prompt('Senha para disparar tratativa:');
-  if(senha!=='GBS@2026'){if(senha!==null)alert('Senha incorreta.');return;}
-
   const prazoStr=prompt('Quantos dias de prazo para o tratamento?');
   if(!prazoStr||isNaN(parseInt(prazoStr))){alert('Informe um número de dias válido.');return;}
   const dias=parseInt(prazoStr);
