@@ -537,7 +537,7 @@ function renderTabelaLeitura(dados){
         } else {
           st=statusLeitura(dataLim,hoje);
         }
-        const multaLeit=diasAtrasoLeit>=2?pend*valorMultaLeitura:0;
+        const multaLeit=diasAtrasoLeit>=2?(r.n_executada||0)*valorMultaLeitura:0;
         const multaLeitFmt=multaLeit>0?`<strong style="color:#a32d2d">R$ ${multaLeit.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>`:'—';
         const podeSel=PODE_DISPARAR()&&(st.includes('Atrasado')||st.includes('st-hoje'));
         const dataLimEsc=(dataLim||'').replace(/'/g,"\'");
@@ -989,7 +989,10 @@ async function carregarUltimasAtualizacoes(){
   if(bannerEl){
     if(candidatos.length){
       const maisRecente=candidatos.reduce((a,b)=>new Date(a.atualizado_em)>new Date(b.atualizado_em)?a:b);
-      bannerEl.textContent=`Atualizado em: ${new Date(maisRecente.atualizado_em).toLocaleString('pt-BR')} por ${maisRecente.atualizado_por}`;
+      const dt=new Date(maisRecente.atualizado_em);
+      const dataStr=dt.toLocaleDateString('pt-BR');
+      const horaStr=dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      bannerEl.textContent=`Atualizado em: ${dataStr} às ${horaStr}`;
     } else {
       bannerEl.textContent='Nenhuma atualização registrada ainda';
     }
