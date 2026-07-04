@@ -118,7 +118,7 @@ tbody td{padding:5px 8px;text-align:center;border-bottom:0.5px solid #e0eee0;bor
           <table>
             <thead><tr>
               <th id="th-check-leit" style="display:none"><input type="checkbox" id="chk-all-leit" onchange="selecionarTodosLeit(this)" title="Selecionar todos"></th>
-              <th>UL</th><th>RZ</th><th>A Exec.</th><th>Faltam</th>
+              <th>UL</th><th>RZ</th><th>A Exec.</th><th>Faltam</th><th>Ñ Executada</th>
               <th>Data Leitura</th><th>Base</th><th>Status</th><th>Multa</th>
             </tr></thead>
             <tbody id="tbody-leitura"></tbody>
@@ -426,17 +426,14 @@ function aplicarFiltros(){
     return true;
   });
 
-  // KPIs - atrasadas (data limite < hoje) e releituras
+  // KPIs - atrasadas agora vem direto da coluna "Leitura ñ exec." da planilha (n_executada)
   const hoje2=new Date(); hoje2.setHours(0,0,0,0);
   let totalAtrasadas=0, totalLeitAtras=0;
   filtL.forEach(r=>{
-    const dataLim=calendarioMap[r.rz]||null;
-    if(!dataLim) return;
-    const dl=new Date(dataLim+'T12:00:00'); dl.setHours(0,0,0,0);
-    if(dl<hoje2){
+    const nExec=r.n_executada||0;
+    if(nExec>0){
       totalAtrasadas++;
-      const pend=(r.a_executar||0)-(r.exec_100||0)-(r.exec_30||0)-(r.telemetria||0);
-      totalLeitAtras+=Math.max(0,pend);
+      totalLeitAtras+=nExec;
     }
   });
   document.getElementById('kpi-pend').textContent=totalAtrasadas.toLocaleString('pt-BR');
@@ -524,13 +521,14 @@ function renderTabelaLeitura(dados){
           <td>${r.rz}</td>
           <td>${r.a_executar||0}</td>
           <td><strong>${pend}</strong></td>
+          <td>${r.n_executada||0}</td>
           <td>${dataStr}</td>
           <td>${r.base||'—'}</td>
           <td>${st}</td>
           <td>${multaLeitFmt}</td>
         </tr>`;
       }).join('')
-    :'<tr><td colspan="9" style="padding:20px;color:#4a7a4a;text-align:center">Nenhuma pendência</td></tr>';
+    :'<tr><td colspan="10" style="padding:20px;color:#4a7a4a;text-align:center">Nenhuma pendência</td></tr>';
 
   document.getElementById('pag-leit-count').textContent=`${total} ULs pendentes`;
   if(PODE_DISPARAR()){ document.getElementById('th-check-leit').style.display=''; document.getElementById('btn-disparar-leit').style.display='none'; document.getElementById('sel-count-leit').textContent='0'; if(document.getElementById('chk-all-leit')) document.getElementById('chk-all-leit').checked=false; }
