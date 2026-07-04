@@ -113,6 +113,7 @@ tbody td{padding:5px 8px;text-align:center;border-bottom:0.5px solid #e0eee0;bor
         <span style="cursor:pointer;flex:1;text-align:center" onclick="toggleSecao('sec-leitura')">&#9776; LEITURAS PENDENTES</span>
         <span id="sec-leitura-icon" style="cursor:pointer" onclick="toggleSecao('sec-leitura')">&#9650;</span>
       </div>
+      <div id="ult-att-leituras" style="font-size:11px;color:#4a7a4a;text-align:center;padding:4px 8px;background:#f0f8f0;border-bottom:0.5px solid #c0dcc0"></div>
       <div id="sec-leitura">
         <div class="secao-body">
           <table>
@@ -137,6 +138,7 @@ tbody td{padding:5px 8px;text-align:center;border-bottom:0.5px solid #e0eee0;bor
         <span style="cursor:pointer;flex:1;text-align:center" onclick="toggleSecao('sec-releitura')">&#9776; RELEITURAS PENDENTES</span>
         <span id="sec-releitura-icon" style="cursor:pointer" onclick="toggleSecao('sec-releitura')">&#9650;</span>
       </div>
+      <div id="ult-att-releituras" style="font-size:11px;color:#4a7a4a;text-align:center;padding:4px 8px;background:#f0f8f0;border-bottom:0.5px solid #c0dcc0"></div>
       <div id="sec-releitura">
         <div class="secao-body">
           <table>
@@ -826,6 +828,7 @@ async function processarCal(){
     }
     prog.className='progresso ok';
     prog.textContent=`✓ ${total} datas salvas (${Object.keys(porMes).length} meses)!`;
+    registrarUpload('calendario');
     carregarDados();
   }catch(e){prog.className='progresso erro';prog.textContent='Erro: '+e.message;console.error(e);btn.disabled=false;}
 }
@@ -879,6 +882,7 @@ async function processarAcomp(){
       prog.textContent=`Salvando... ${Math.min(i+500,recs.length)}/${recs.length}`;
     }
     prog.className='progresso ok'; prog.textContent=`✓ ${recs.length} ULs salvas!`;
+    registrarUpload('leituras');
     carregarMeses();
   }catch(e){prog.className='progresso erro';prog.textContent='Erro: '+e.message;console.error(e);btn.disabled=false;}
 }
@@ -934,11 +938,29 @@ async function processarRele(){
     await sb.from('releituras').delete().eq('mes_ref',mesRef);
     for(let i=0;i<recs.length;i+=500) await sb.from('releituras').insert(recs.slice(i,i+500));
     prog.className='progresso ok'; prog.textContent=`✓ ${recs.length} releituras salvas!`;
+    registrarUpload('releituras');
     carregarMeses();
   }catch(e){prog.className='progresso erro';prog.textContent='Erro: '+e.message;console.error(e);btn.disabled=false;}
 }
 
-let PERFIL_BASE=null, PERFIL_TIPO=null;
+let PERFIL_BASE=null, PERFIL_TIPO=null, USUARIO_NOME=null;
+
+async function registrarUpload(tipo){
+  await sb.from('uploads_log').upsert({tipo,atualizado_em:new Date().toISOString(),atualizado_por:USUARIO_NOME||'—'});
+  carregarUltimasAtualizacoes();
+}
+
+async function carregarUltimasAtualizacoes(){
+  const {data}=await sb.from('uploads_log').select('tipo,atualizado_em,atualizado_por');
+  const map={};
+  (data||[]).forEach(r=>map[r.tipo]=r);
+  ['leituras','releituras','calendario'].forEach(tipo=>{
+    const el=document.getElementById(`ult-att-${tipo}`);
+    if(!el) return;
+    const r=map[tipo];
+    el.textContent=r?`Última atualização: ${new Date(r.atualizado_em).toLocaleString('pt-BR')} — ${r.atualizado_por}`:'Sem atualizações registradas';
+  });
+}
 let valorMultaLeitura=0, valorMultaReleitura=0;
 
 async function carregarConfigMultas(){
@@ -970,11 +992,11 @@ const PODE_DISPARAR = ()=>['gestor','gestor1','supervisor_geral'].includes(PERFI
 
   const {data:up}=await sb.from('usuarios_portal').select('nome,perfil,base,ativo').eq('id',user.id).single();
   if(up&&up.ativo){
-    PERFIL_TIPO=up.perfil; PERFIL_BASE=up.base||null;
+    PERFIL_TIPO=up.perfil; PERFIL_BASE=up.base||null; USUARIO_NOME=up.nome||user.email;
     document.getElementById('hdr-user').textContent=up.nome||user.email;
   } else {
     document.getElementById('hdr-user').textContent=user.email;
-    PERFIL_TIPO='gestor'; PERFIL_BASE=null;
+    PERFIL_TIPO='gestor'; PERFIL_BASE=null; USUARIO_NOME=user.email;
   }
 
   if(PERFIL_TIPO!=='gestor'){
@@ -998,6 +1020,7 @@ const PODE_DISPARAR = ()=>['gestor','gestor1','supervisor_geral'].includes(PERFI
   }
 
   await carregarConfigMultas();
+  await carregarUltimasAtualizacoes();
   await carregarMeses();
 })();
 </script>
