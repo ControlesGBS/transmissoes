@@ -144,7 +144,6 @@ tbody td{padding:5px 8px;text-align:center;border-bottom:0.5px solid #e0eee0;bor
         <span style="cursor:pointer;flex:1;text-align:center" onclick="toggleSecao('sec-leitura')">&#9776; LEITURAS PENDENTES</span>
         <span id="sec-leitura-icon" style="cursor:pointer" onclick="toggleSecao('sec-leitura')">&#9650;</span>
       </div>
-      <div id="ult-att-leituras" style="font-size:11px;color:#4a7a4a;text-align:center;padding:4px 8px;background:#f0f8f0;border-bottom:0.5px solid #c0dcc0"></div>
       <div id="sec-leitura">
         <div class="secao-body">
           <table>
@@ -169,7 +168,6 @@ tbody td{padding:5px 8px;text-align:center;border-bottom:0.5px solid #e0eee0;bor
         <span style="cursor:pointer;flex:1;text-align:center" onclick="toggleSecao('sec-releitura')">&#9776; RELEITURAS PENDENTES</span>
         <span id="sec-releitura-icon" style="cursor:pointer" onclick="toggleSecao('sec-releitura')">&#9650;</span>
       </div>
-      <div id="ult-att-releituras" style="font-size:11px;color:#4a7a4a;text-align:center;padding:4px 8px;background:#f0f8f0;border-bottom:0.5px solid #c0dcc0"></div>
       <div id="sec-releitura">
         <div class="secao-body">
           <table>
@@ -985,12 +983,6 @@ async function carregarUltimasAtualizacoes(){
   const {data}=await sb.from('uploads_log').select('tipo,atualizado_em,atualizado_por');
   const map={};
   (data||[]).forEach(r=>map[r.tipo]=r);
-  ['leituras','releituras','calendario'].forEach(tipo=>{
-    const el=document.getElementById(`ult-att-${tipo}`);
-    if(!el) return;
-    const r=map[tipo];
-    el.textContent=r?`Última atualização: ${new Date(r.atualizado_em).toLocaleString('pt-BR')} — ${r.atualizado_por}`:'Sem atualizações registradas';
-  });
   // Banner principal — pega o mais recente entre leituras e releituras
   const candidatos=[map['leituras'],map['releituras']].filter(Boolean);
   const bannerEl=document.getElementById('banner-atualizacao-texto');
