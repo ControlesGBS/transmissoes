@@ -956,7 +956,17 @@ async function processarRele(){
         }
       }
     }
-    if(!mesRef||!recs.length){prog.textContent='Dados não encontrados.';btn.disabled=false;return;}
+    if(!mesRef){prog.textContent='Mês/Ano não encontrado no cabeçalho da planilha.';btn.disabled=false;return;}
+    if(!recs.length){
+      // Planilha veio sem nenhuma releitura pendente para o mês — zera a relação existente
+      prog.textContent='Nenhuma releitura na planilha. Zerando pendências do mês...';
+      await sb.from('releituras').delete().eq('mes_ref',mesRef);
+      prog.className='progresso ok'; prog.textContent='✓ Nenhuma releitura pendente neste mês — lista zerada.';
+      registrarUpload('releituras');
+      carregarMeses();
+      btn.disabled=false;
+      return;
+    }
     prog.textContent=`${recs.length} releituras. Salvando...`;
     await sb.from('releituras').delete().eq('mes_ref',mesRef);
     for(let i=0;i<recs.length;i+=500) await sb.from('releituras').insert(recs.slice(i,i+500));
