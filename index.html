@@ -447,13 +447,13 @@ function aplicarFiltros(){
   const rz=document.getElementById('f-rz').value;
 
   const filtL=dadosLeitura.filter(r=>{
-    if(base&&(r.base||'').toLowerCase()!==base.toLowerCase()) return false;
+    if(base&&normBase(r.base)!==normBase(base)) return false;
     if(rz&&r.rz!==rz) return false;
     return true;
   });
   // Releituras: filtra só por base, RZ não afeta
   const filtR=dadosReleitura.filter(r=>{
-    if(base&&(r.base||'').toLowerCase()!==base.toLowerCase()) return false;
+    if(base&&normBase(r.base)!==normBase(base)) return false;
     return true;
   });
 
@@ -977,6 +977,11 @@ async function processarRele(){
 }
 
 let PERFIL_BASE=null, PERFIL_TIPO=null, USUARIO_NOME=null;
+
+// Normaliza nome de base: remove acentos, espaços extras e diferenças de maiúscula/minúscula
+function normBase(s){
+  return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+}
 
 async function registrarUpload(tipo){
   await sb.from('uploads_log').upsert({tipo,atualizado_em:new Date().toISOString(),atualizado_por:USUARIO_NOME||'—'});
