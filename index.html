@@ -360,6 +360,12 @@ function statusLeitura(dataLimite, hoje){
 }
 
 // Status releitura: dias corridos
+function diasParaVencimento(vencimento, hoje){
+  if(!vencimento) return Infinity; // "Sem data" vai pro final
+  const venc=new Date(vencimento+'T12:00:00'); venc.setHours(0,0,0,0);
+  return Math.round((venc-hoje)/86400000); // negativo = vencida (quanto mais negativo, mais atrasada)
+}
+
 function statusReleitura(vencimento, hoje){
   if(!vencimento) return '<span style="color:#6b7280;font-size:11px">Sem data</span>';
   const venc=new Date(vencimento+'T12:00:00'); venc.setHours(0,0,0,0);
@@ -513,6 +519,7 @@ async function carregarTratativasBackground(filtL, filtR){
 }
 
 function renderTabelaLeitura(dados){
+  dados=dados.filter(r=>(r.n_executada||0)>0);
   dados=dados.slice().sort((a,b)=>(a.ul||'').localeCompare(b.ul||'',undefined,{numeric:true}));
   const hoje=new Date(); hoje.setHours(0,0,0,0);
   const total=dados.length;
@@ -574,7 +581,12 @@ function renderTabelaReleitura(dados){
     if(!agrup[k]) agrup[k]={ul:r.ul,rz:r.rz,vencimento:r.vencimento,base:r.base,qtd:0,n_releitura:r.n_releitura||1};
     agrup[k].qtd++;
   });
-  const agrupArr=Object.values(agrup).sort((a,b)=>a.ul.localeCompare(b.ul));
+  const agrupArr=Object.values(agrup).sort((a,b)=>{
+    const diffA=diasParaVencimento(a.vencimento,hoje);
+    const diffB=diasParaVencimento(b.vencimento,hoje);
+    if(diffA!==diffB) return diffA-diffB;
+    return a.ul.localeCompare(b.ul);
+  });
 
   document.getElementById('tbody-releitura').innerHTML=agrupArr.length
     ?agrupArr.map(r=>{
