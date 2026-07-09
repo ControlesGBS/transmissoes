@@ -463,12 +463,17 @@ function aplicarFiltros(){
     return true;
   });
 
-  // KPIs - atrasadas agora vem direto da coluna "Leitura ñ exec." da planilha (n_executada)
+  // KPIs - só conta como atrasada quando realmente venceu o prazo (mesma regra do status
+  // "Atrasado" da tabela: data limite já passou), não só por ter leitura pendente na planilha
   const hoje2=new Date(); hoje2.setHours(0,0,0,0);
   let totalAtrasadas=0, totalLeitAtras=0;
   filtL.forEach(r=>{
     const nExec=r.n_executada||0;
-    if(nExec>0){
+    if(nExec<=0) return;
+    const dataLim=calendarioMap[r.rz]||null;
+    if(!dataLim) return; // sem data limite conhecida, não dá pra dizer que venceu
+    const dl=new Date(dataLim+'T12:00:00'); dl.setHours(0,0,0,0);
+    if(hoje2>dl){
       totalAtrasadas++;
       totalLeitAtras+=nExec;
     }
