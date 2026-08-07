@@ -968,7 +968,15 @@ async function processarRele(){
         }
         const map=LOCAL_MAP[lc]||{};
         if(instalacao&&/^\d{10}$/.test(instalacao)){
-          recs.push({mes_ref:mesRef,ul,rz,instalacao,medidor,reg,endereco,
+          // releitura de RZ do fim do mês costuma vencer só no mês seguinte — nesse caso
+          // ela vai pra página do mês do vencimento, não a do relatório onde apareceu,
+          // senão a checagem de multa nunca roda no mês em que ela vence de verdade
+          let mesRefLinha=mesRef;
+          if(vencimento){
+            const vencMes=vencimento.slice(0,7)+'-01';
+            if(mesRef && vencMes!==mesRef) mesRefLinha=vencMes;
+          }
+          recs.push({mes_ref:mesRefLinha,ul,rz,instalacao,medidor,reg,endereco,
             n_releitura,vencimento,base:map.base||null});
         }
       }
@@ -986,6 +994,15 @@ async function processarRele(){
     }
     prog.textContent=`${recs.length} releituras. Salvando...`;
     await sb.from('releituras').delete().eq('mes_ref',mesRef);
+    // limpa versões antigas das releituras que "migraram" pro mês do vencimento, senão
+    // reenviar o mesmo relatório duplica essas linhas no mês pra onde elas foram
+    const chavesSpillover=[...new Set(recs.filter(r=>r.mes_ref!==mesRef).map(r=>`${r.mes_ref}|${r.ul}|${r.vencimento||''}`))];
+    for(const chave of chavesSpillover){
+      const [mr,ul,venc]=chave.split('|');
+      let q=sb.from('releituras').delete().eq('mes_ref',mr).eq('ul',ul);
+      q=venc?q.eq('vencimento',venc):q.is('vencimento',null);
+      await q;
+    }
     for(let i=0;i<recs.length;i+=500) await sb.from('releituras').insert(recs.slice(i,i+500));
     prog.className='progresso ok'; prog.textContent=`✓ ${recs.length} releituras salvas!`;
     registrarUpload('releituras');
