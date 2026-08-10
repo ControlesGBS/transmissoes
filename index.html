@@ -378,12 +378,24 @@ function statusReleitura(vencimento, hoje){
 }
 
 async function carregarMeses(){
-  const {data} = await sb.from('transmissoes').select('mes_ref').order('mes_ref',{ascending:false});
-  // Converter yyyy-mm-01 → MM/YYYY
-  const meses=[...(new Set((data||[]).map(r=>{
-    const [aa,mm]=r.mes_ref.split('-');
-    return `${mm}/${aa}`;
-  })))];
+  // Paginado -- sem isso, o corte padrao de 1000 linhas do Supabase escondia meses
+  // antigos sempre que o mes mais recente sozinho ja passava de 1000 linhas
+  // (ordenado decrescente, as 1000 primeiras vinham todas do mes mais novo).
+  const mesesSet=new Set(); let from=0;
+  while(true){
+    const {data}=await sb.from('transmissoes').select('mes_ref').range(from,from+999);
+    if(!data||!data.length) break;
+    data.forEach(r=>{
+      const [aa,mm]=r.mes_ref.split('-');
+      mesesSet.add(`${mm}/${aa}`);
+    });
+    if(data.length<1000) break;
+    from+=1000;
+  }
+  const meses=[...mesesSet].sort((a,b)=>{
+    const [ma,aa]=a.split('/'), [mb,ab]=b.split('/');
+    return `${ab}${mb}`.localeCompare(`${aa}${ma}`);
+  });
   const sel=document.getElementById('f-mes');
   const hoje=new Date();
   const mesAtual=`${String(hoje.getMonth()+1).padStart(2,'0')}/${hoje.getFullYear()}`;
