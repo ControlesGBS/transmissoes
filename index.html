@@ -302,7 +302,21 @@ const CICLO = {
   '89':['03','06','09','12'],'94':['03','06','09','12'],'99':['03','06','09','12']
 };
 
-let dadosLeitura=[], dadosReleitura=[], calendarioMap={};
+let dadosLeitura=[], dadosReleitura=[], calendarioMap={}, cargaAtualId=0;
+// Buscar N páginas todas de uma vez em paralelo (Promise.all sem limite) satura o pool de
+// conexões do Postgres quando o mês tem muitas páginas -- limitar a concorrência evita isso
+// (mesmo helper usado em impedimentos/index.html).
+async function buscarPaginasLimitadas(totalPaginas, concorrencia, fabricaQuery){
+  const paginas = [];
+  for(let i=0;i<totalPaginas;i+=concorrencia){
+    const lote = await Promise.all(
+      Array.from({length: Math.min(concorrencia, totalPaginas-i)}, (_, j) => fabricaQuery(i+j))
+    );
+    paginas.push(...lote);
+  }
+  return paginas;
+}
+
 let paginaL=1, paginaR=1;
 const POR_PAG=100;
 
@@ -381,16 +395,19 @@ async function carregarMeses(){
   // Paginado -- sem isso, o corte padrao de 1000 linhas do Supabase escondia meses
   // antigos sempre que o mes mais recente sozinho ja passava de 1000 linhas
   // (ordenado decrescente, as 1000 primeiras vinham todas do mes mais novo).
-  const mesesSet=new Set(); let from=0;
-  while(true){
-    const {data}=await sb.from('transmissoes').select('mes_ref').range(from,from+999);
+  // Antes lia a tabela inteira (todas as linhas de todos os meses, 1000 por vez, uma página
+  // depois da outra) só para descobrir os meses -- era o que mais atrasava a abertura.
+  // Agora pergunta "qual o mês mais recente?" e depois "qual o próximo mais antigo?":
+  // uma consulta pequena por mês, independente de quantas linhas a tabela tem.
+  const mesesSet=new Set(); let ultimoMes=null;
+  for(let i=0;i<120;i++){
+    let qm=sb.from('transmissoes').select('mes_ref').order('mes_ref',{ascending:false}).limit(1);
+    if(ultimoMes) qm=qm.lt('mes_ref',ultimoMes);
+    const {data}=await qm;
     if(!data||!data.length) break;
-    data.forEach(r=>{
-      const [aa,mm]=r.mes_ref.split('-');
-      mesesSet.add(`${mm}/${aa}`);
-    });
-    if(data.length<1000) break;
-    from+=1000;
+    ultimoMes=data[0].mes_ref;
+    const [aa,mm]=ultimoMes.split('-');
+    mesesSet.add(`${mm}/${aa}`);
   }
   const meses=[...mesesSet].sort((a,b)=>{
     const [ma,aa]=a.split('/'), [mb,ab]=b.split('/');
@@ -412,18 +429,33 @@ async function carregarDados(){
   const mesRef=`${aa}-${mm}-01`;
   const mesNum=parseInt(mm);
 
-  const {data:cal}=await sb.from('calendario_leitura').select('rz,data_leitura').eq('mes_ref',mesRef);
+  // Se o usuário trocar de mês no meio da carga, a carga antiga é descartada
+  const cargaId=++cargaAtualId;
+
+  // Calendário, 1ª página de transmissões e 1ª página de releituras saem juntos (antes era um depois do
+  // outro). A 1ª página já traz a contagem total (count:'exact'), então dá para saber quantas faltam;
+  // as demais vêm em paralelo (5 por vez) em vez de uma depois da outra.
+  const LOTE=1000;
+  const [{data:cal}, primeira, primeiraR] = await Promise.all([
+    sb.from('calendario_leitura').select('rz,data_leitura').eq('mes_ref',mesRef),
+    sb.from('transmissoes').select('*',{count:'exact'}).eq('mes_ref',mesRef).range(0,LOTE-1),
+    sb.from('releituras').select('*',{count:'exact'}).eq('mes_ref',mesRef).range(0,LOTE-1)
+  ]);
+  if(cargaId!==cargaAtualId) return;
   calendarioMap={};
   (cal||[]).forEach(r=>{ calendarioMap[r.rz]=r.data_leitura; });
 
-  let trans=[], from=0;
-  while(true){
-    const {data:lote}=await sb.from('transmissoes').select('*').eq('mes_ref',mesRef).range(from,from+999);
-    if(!lote||!lote.length) break;
-    trans=trans.concat(lote);
-    if(lote.length<1000) break;
-    from+=1000;
-  }
+  const totalPag=Math.max(1,Math.ceil((primeira.count||0)/LOTE));
+  const totalPagR=Math.max(1,Math.ceil((primeiraR.count||0)/LOTE));
+  const [restantes, restantesR] = await Promise.all([
+    totalPag>1 ? buscarPaginasLimitadas(totalPag-1,5,i=>
+      sb.from('transmissoes').select('*').eq('mes_ref',mesRef).range((i+1)*LOTE,(i+1)*LOTE+LOTE-1)) : [],
+    totalPagR>1 ? buscarPaginasLimitadas(totalPagR-1,5,i=>
+      sb.from('releituras').select('*').eq('mes_ref',mesRef).range((i+1)*LOTE,(i+1)*LOTE+LOTE-1)) : []
+  ]);
+  if(cargaId!==cargaAtualId) return;
+  const trans=[...(primeira.data||[]), ...restantes.flatMap(p=>p.data||[])];
+  const rele=[...(primeiraR.data||[]), ...restantesR.flatMap(p=>p.data||[])];
 
   const hoje=new Date(); hoje.setHours(0,0,0,0);
   dadosLeitura=trans.filter(r=>{
@@ -441,7 +473,6 @@ async function carregarDados(){
     return true;
   });
 
-  const {data:rele}=await sb.from('releituras').select('*').eq('mes_ref',mesRef);
   dadosReleitura=rele||[];
 
   // Popular filtros
